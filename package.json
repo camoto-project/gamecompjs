@@ -30,5 +30,8 @@
   "homepage": "https://github.com/Malvineous/gamecompjs#readme",
   "devDependencies": {
     "mocha": "^5.2.0"
+  },
+  "dependencies": {
+    "@malvineous/record-io-buffer": "^1.0.0"
   }
 }
