@@ -4,7 +4,7 @@ const TestUtil = require('./util.js');
 const standardCleartext = require('./gen-cleartext.js');
 const GameCompression = require('../index.js');
 
-const format = 'enc-xor-blood';
+const format = 'enc-xor-blood-v301';
 
 const handler = GameCompression.getHandler(format);
 const md = handler.metadata();
