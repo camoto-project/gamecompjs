@@ -23,6 +23,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const contentRevealed = handler.reveal(content.seed4f, params);
 			testutil.buffersEqual(standardCleartext, contentRevealed);
 		});
+
+		it('works with a string seed', function() {
+			const params = {seed: '0x4f'};
+			const contentRevealed = handler.reveal(content.seed4f, params);
+			testutil.buffersEqual(standardCleartext, contentRevealed);
+		});
 	});
 
 	describe('obscure()', function() {

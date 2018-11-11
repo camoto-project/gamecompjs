@@ -21,7 +21,7 @@ module.exports = class Encrypt_XOR_Blood
 	{
 		let output = Buffer.from(content);
 
-		const seed = params.seed || 0;
+		const seed = parseInt(params.seed || 0);
 		const lenEncrypt = Math.min(RFF_FILE_CRYPT_LEN, output.length);
 
 		for (let i = 0; i < lenEncrypt; i++) {
