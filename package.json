@@ -1,5 +1,5 @@
 {
-  "name": "gamecomp",
+  "name": "@malvineous/gamecomp",
   "version": "1.0.0",
   "description": "Apply and remove compression and encryption algorithms used by DOS games",
   "main": "index.js",
@@ -32,6 +32,8 @@
     "mocha": "^5.2.0"
   },
   "dependencies": {
-    "@malvineous/record-io-buffer": "^1.0.0"
+  },
+  "directories": {
+    "test": "test"
   }
 }
