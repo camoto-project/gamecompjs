@@ -1,18 +1,20 @@
 const Debug = require('../util/utl-debug.js');
 
-const FORMAT_ID = 'enc-xor-blood-v301';
+const FORMAT_ID = 'enc-xor-blood';
 
 // Number of bytes encrypted from start of file
 const RFF_FILE_CRYPT_LEN = 256;
 
-module.exports = class Encrypt_XOR_Blood_v301
+module.exports = class Encrypt_XOR_Blood
 {
 	static metadata() {
 		return {
 			id: FORMAT_ID,
-			title: 'Blood XOR encryption v3.1',
+			title: 'Blood XOR encryption',
 			params: {
+				offset: 'Key offset (v3.1 = 0, v3.0 = 1)',
 				seed: 'Initial seed for the first XOR byte',
+				limit: 'Number of bytes to affect (0=all, default is ' + RFF_FILE_CRYPT_LEN + ')',
 			},
 		};
 	}
@@ -21,11 +23,12 @@ module.exports = class Encrypt_XOR_Blood_v301
 	{
 		let output = Buffer.from(content);
 
+		const offset = parseInt(params.offset || 0);
 		const seed = parseInt(params.seed || 0);
-		const lenEncrypt = Math.min(RFF_FILE_CRYPT_LEN, output.length);
+		const lenEncrypt = Math.min(parseInt(params.limit || RFF_FILE_CRYPT_LEN), output.length);
 
 		for (let i = 0; i < lenEncrypt; i++) {
-			output[i] ^= seed + (i >> 1);
+			output[i] ^= seed + ((i + offset) >> 1);
 		}
 
 		return output;

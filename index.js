@@ -1,6 +1,5 @@
 const fileTypes = [
-	require('./encrypt/enc-xor-blood-v300.js'),
-	require('./encrypt/enc-xor-blood-v301.js'),
+	require('./encrypt/enc-xor-blood.js'),
 ];
 
 module.exports = class GameCompression
