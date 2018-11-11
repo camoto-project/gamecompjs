@@ -8,15 +8,15 @@ const Debug = require('../util/utl-debug.js');
 const param = process.argv[2];
 
 if (['-h', '--help', '-?', '?', undefined].some(v => param == v)) {
-	console.log('gamecomp --list | (+|-)format [opt=val [opt=val ...]]\n');
-	console.log('gamecomp --list       // List algorithms and their options');
+	console.log('gamecomp --formats | (+|-)format [opt=val [opt=val ...]]\n');
+	console.log('gamecomp --formats    // List algorithms and their options');
 	console.log('gamecomp +example     // Compress/encrypt with "example" algorithm');
 	console.log('gamecomp -example     // Decompress/decrypt with "example"');
 	console.log('gamecomp +ex opt=123  // Pass parameter to algorithm');
 	process.exit(0);
 }
 
-if (param == '--list') {
+if (param == '--formats') {
 	GameCompression.listHandlers().forEach(handler => {
 		const md = handler.metadata();
 		console.log(`${md.id}: ${md.title}`);
