@@ -41,5 +41,14 @@ GameCompression.listHandlers().forEach(handler => {
 				testutil.buffersEqual(standardCleartext, contentInput, 'Input buffer was changed during obscure');
 			});
 		});
+
+		describe('obscure() then reveal() are lossless', function() {
+			it(`should be able to undo own transformation`, function() {
+				let contentInput = Buffer.from(standardCleartext);
+				const contentObscured = handler.obscure(contentInput);
+				const contentRevealed = handler.reveal(contentObscured);
+				testutil.buffersEqual(standardCleartext, contentRevealed);
+			});
+		});
 	});
 });
