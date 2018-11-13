@@ -1,4 +1,5 @@
 const fileTypes = [
+	require('./compress/cmp-lzw.js'),
 	require('./encrypt/enc-xor-blood.js'),
 ];
 

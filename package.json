@@ -32,6 +32,8 @@
     "mocha": "^5.2.0"
   },
   "dependencies": {
+    "@malvineous/record-io-buffer": "^1.0.0",
+    "bit-buffer": "^0.2.3"
   },
   "directories": {
     "test": "test"
