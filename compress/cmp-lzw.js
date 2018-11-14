@@ -237,28 +237,52 @@ module.exports = class Compress_LZW
 					// that followed by the current byte is not in the dictionary.  So we
 					// will write out the previous codeword and then start again.
 					try {
-						bs.writeBits(idxPending, lenCodeword);
-						// idxPending is now prev codeword
-						const s = dictEntry(dict, idxPending);
-						let newDictEntry = {
-							ch: s[0],
-							ptr: cwPrev,
-						};
-						cwPrev = idxPending;
-						dict.push(newDictEntry);
-						const sdest = dictEntry(dict, dict.length-1);
-						const str = Buffer.from(sdest).toString();
+						// But first we check to see whether the letter happens to be the same
+						// as the first one in the dictionary entry, because if it is, we can
+						// use a trick and write out the codeword for the next dictionary
+						// entry before we have created it.
 
-						let pendingStr = '';
-						if (idxPending !== null) {
-							const ps = dictEntry(dict, idxPending);
-							pendingStr = Buffer.from(ps).toString();
+						const dictVal = dictEntry(dict, idxPending);
+						if ((idxPending === cwPrev) && (t == dictVal[0])) {
+							if (Debug.enabled) {
+								let pendingStr = '';
+								if (idxPending !== null) {
+									const ps = dictEntry(dict, idxPending);
+									pendingStr = Buffer.from(ps).toString();
+								}
+
+								Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} `
+									+ `[${String.fromCharCode(t)}] matches prev code + `
+									+ `prevcode[0], using self-referencing codeword `
+									+ `#${dict.length}`);
+							}
+							idxPending = dict.length;
+							t = null;
 						}
+						let newDictEntry = {
+							ptr: cwPrev,
+							ch: dictVal[0],
+						};
+						dict.push(newDictEntry);
 
-						Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} [${String.fromCharCode(t)}] `
-							+ `not in dict, writing pending as codeword ${idxPending} => new `
-							+ `dict #${dict.length-1} <- ${idxPending} [${str}]`);
-						offCW++;
+						bs.writeBits(idxPending, lenCodeword);
+						cwPrev = idxPending;
+
+						if (Debug.enabled) {
+							const sdest = dictEntry(dict, dict.length-1);
+							const str = Buffer.from(sdest).toString();
+
+							let pendingStr = '';
+							if (idxPending !== null) {
+								const ps = dictEntry(dict, idxPending);
+								pendingStr = Buffer.from(ps).toString();
+							}
+
+							Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} [${String.fromCharCode(t)}] `
+								+ `not in dict, writing pending as codeword ${idxPending} => new `
+								+ `dict #${dict.length-1} <- ${idxPending} [${str}]`);
+							offCW++;
+						}
 					} catch (e) {
 						Debug.log('Bitstream error, ending early:', e);
 						idxPending = null;

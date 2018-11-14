@@ -151,6 +151,71 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				testutil.buffersEqual(content[id], contentObscured);
 			});
 		});
+
+		describe(`self-referencing codewords are produced correctly`, function() {
+
+			it(`with single dictionary step`, function() {
+				let expected = new ArrayBuffer(6);
+				let bs = new BitStream(expected);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(67, 9); // C => 258 [BC]
+				bs.writeBits(68, 9); // D => 259 [CD]
+				bs.writeBits(260, 9); // Own codeword
+				const input = ['A', 'B', 'C', 'D', 'DD'].join('');
+
+				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+			});
+
+			it(`with double dictionary step`, function() {
+				let expected = new ArrayBuffer(6);
+				let bs = new BitStream(expected);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(67, 9); // C => 258 [BC]
+				bs.writeBits(258, 9); // BC => 259 [BC,B]
+				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
+				const input = ['A', 'B', 'C', 'BC', 'BCB'].join('');
+
+				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+			});
+
+			it(`with triple dictionary step`, function() {
+				let expected = new ArrayBuffer(6);
+				let bs = new BitStream(expected);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(257, 9); // AB => 258 [B,A]
+				bs.writeBits(258, 9); // BA => 259 [AB,B]
+				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
+				const input = ['A', 'B', 'AB', 'BA', 'BAB'].join('');
+
+				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+			});
+
+			it(`with triple dictionary step and double self-code`, function() {
+				let expected = new ArrayBuffer(7);
+				let bs = new BitStream(expected);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(257, 9); // AB => 258 [B,A]
+				bs.writeBits(258, 9); // BA => 259 [AB,B]
+				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
+				bs.writeBits(261, 9); // Own codeword [BAB,B] => 261 [BAB,B]
+				const input = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'].join('');
+
+				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+			});
+
+		});
 	});
 
 	describe('obscure() then reveal() are lossless', function() {
