@@ -105,37 +105,42 @@ module.exports = class Compress_LZW
 					continue;
 				}
 
-				let dictNewEntry = {
-					ptr: cwPrev,
-				};
+				let dictVal;
 				if (dict[cw] !== undefined) {
-					const s = dictEntry(dict, cw);
-
-					const buf = Buffer.from(s);
-					output.put(buf);
-
-					dictNewEntry.ch = s[0];
+					dictVal = dictEntry(dict, cw);
 				} else {
 					// Codeword isn't in the dictionary, act as if we got the previous
 					// codeword again.
-					const s = dictEntry(dict, cwPrev);
-
-					const buf = Buffer.from(s);
-					output.put(buf);
-
-					dictNewEntry.ch = s[0];
+					dictVal = dictEntry(dict, cwPrev);
+					// Append the first char onto the end of the dictionary string.  This
+					// is what happens when we add it to the dictionary below, so it's
+					// like we are writing out the dictionary value for this codeword
+					// just before it has made it into the dictionary.
+					dictVal.push(dictVal[0]);
 				}
-				//dictNewEntry.full: [...(dict[cwPrev] && dict[cwPrev].full || []), ac],
-				dict.push(dictNewEntry);
-				const sdest = dictEntry(dict, dict.length-1);
-				const str = Buffer.from(sdest).toString();
 
-				const cwdest = dictEntry(dict, cw);
-				const cwstr = Buffer.from(cwdest).toString();
+				// Write out the value from the dictionary
+				output.put(Buffer.from(dictVal));
 
-				Debug.log(`@${offCW} CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
+				// The new dictionary entry is the previous codeword plus the first
+				// character we just wrote.
+				dict.push({
+					ptr: cwPrev,
+					ch: dictVal[0],
+					//full: [...(dict[cwPrev] && dict[cwPrev].full || []), dictVal[0]],
+				});
+
+				if (Debug.enabled) {
+					const sdest = dictEntry(dict, dict.length-1);
+					const str = Buffer.from(sdest).toString();
+
+					const cwdest = dictEntry(dict, cw);
+					const cwstr = Buffer.from(cwdest).toString();
+
+					Debug.log(`@${offCW} CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
+					offCW++;
+				}
 				cwPrev = cw;
-				offCW++;
 
 				// Do this last so the codeword gets increased before we check how many
 				// bits are still left to read.
