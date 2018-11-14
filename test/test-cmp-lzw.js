@@ -10,10 +10,9 @@ let testutil = new TestUtil(md.id);
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	let content = {};
-	let presets = [
+	let presets = {
 		/*
-		{
-			id: 'epfs',
+		epfs: {
 			title: 'Lion King',
 			params: {
 				initialBits: 9,
@@ -25,8 +24,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			}
 		},
 		*/
-		{
-			id: 'mbash',
+		mbash: {
 			title: 'Monster Bash',
 			params: {
 				initialBits: 9,
@@ -37,8 +35,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			}
 		},
 		/*
-		{
-			id: 'sierra',
+		sierra: {
 			title: 'Sierra',
 			params: {
 				initialBits: 9,
@@ -49,8 +46,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bigEndian: false,
 			}
 		},
-		{
-			id: 'stellar7',
+		stellar7: {
 			title: 'Stellar 7',
 			params: {
 				initialBits: 9,
@@ -63,32 +59,38 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			}
 		},
 		*/
-	];
+	};
 	before('load test data from local filesystem', function() {
 		content.default = testutil.loadData('default.bin');
 		content.mbash = testutil.loadData('mbash.bin');
 	});
 
 	describe('reveal()', function() {
-		presets.forEach(p => {
+		Object.keys(presets).forEach(id => {
+			const p = presets[id];
+
 			it(`works with ${p.title} settings`, function() {
-				const contentRevealed = handler.reveal(content[p.id], p.params);
+				const contentRevealed = handler.reveal(content[id], p.params);
 				testutil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
 	});
 
 	describe('obscure()', function() {
-		presets.forEach(p => {
+		Object.keys(presets).forEach(id => {
+			const p = presets[id];
+
 			it(`works with ${p.title} settings`, function() {
 				const contentObscured = handler.obscure(standardCleartext, p.params);
-				testutil.buffersEqual(content[p.id], contentObscured);
+				testutil.buffersEqual(content[id], contentObscured);
 			});
 		});
 	});
 
 	describe('obscure() then reveal() are lossless', function() {
-		presets.forEach(p => {
+		Object.keys(presets).forEach(id => {
+			const p = presets[id];
+
 			it(`works with ${p.title} settings`, function() {
 				const contentObscured = handler.obscure(standardCleartext, p.params);
 				const contentRevealed = handler.reveal(contentObscured, p.params);
