@@ -1,4 +1,5 @@
 const assert = require('assert');
+const BitStream = require('bit-buffer').BitStream;
 
 const TestUtil = require('./util.js');
 const standardCleartext = require('./gen-cleartext.js');
@@ -73,6 +74,71 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const contentRevealed = handler.reveal(content[id], p.params);
 				testutil.buffersEqual(standardCleartext, contentRevealed);
 			});
+		});
+
+		describe(`self-referencing codewords are handled correctly`, function() {
+
+			it(`with single dictionary step`, function() {
+				let input = new ArrayBuffer(6);
+				let bs = new BitStream(input);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(67, 9); // C => 258 [BC]
+				bs.writeBits(68, 9); // D => 259 [CD]
+				bs.writeBits(260, 9); // Own codeword
+				const expected = ['A', 'B', 'C', 'D', 'DD'].join('');
+
+				const contentRevealed = handler.reveal(input, presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+			});
+
+			it(`with double dictionary step`, function() {
+				let input = new ArrayBuffer(6);
+				let bs = new BitStream(input);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(67, 9); // C => 258 [BC]
+				bs.writeBits(258, 9); // BC => 259 [BC,B]
+				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
+				const expected = ['A', 'B', 'C', 'BC', 'BCB'].join('');
+
+				const contentRevealed = handler.reveal(input, presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+			});
+
+			it(`with triple dictionary step`, function() {
+				let input = new ArrayBuffer(6);
+				let bs = new BitStream(input);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(257, 9); // AB => 258 [B,A]
+				bs.writeBits(258, 9); // BA => 259 [AB,B]
+				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
+				const expected = ['A', 'B', 'AB', 'BA', 'BAB'].join('');
+
+				const contentRevealed = handler.reveal(input, presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+			});
+
+			it(`with triple dictionary step and double self-code`, function() {
+				let input = new ArrayBuffer(7);
+				let bs = new BitStream(input);
+
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(257, 9); // AB => 258 [B,A]
+				bs.writeBits(258, 9); // BA => 259 [AB,B]
+				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
+				bs.writeBits(261, 9); // Own codeword [BAB,B] => 261 [BAB,B]
+				const expected = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'].join('');
+
+				const contentRevealed = handler.reveal(input, presets.mbash.params);
+				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+			});
+
 		});
 	});
 
