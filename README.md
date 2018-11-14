@@ -7,11 +7,10 @@ decompress game data, as well as encrypt and decrypt it too.
 
 ## Installation as an end-user
 
-If you wish to use the command-line `gamearch` utility to work with
-game archives directly, you can install the library globally on your
-system:
+If you wish to use the command-line `gamecomp` utility to work with the
+algorithms directly, you can install the library globally on your system:
 
-    npm install -g gamearchive
+    npm install -g @malvineous/gamecomp
 
 ### Command line interface
 
@@ -38,7 +37,7 @@ to apply the algorithm (compress/encrypt) or a `-` to reverse it
 If you wish to make use of the library in your own project, install it
 in the usual way:
 
-    npm install gamearchive
+    npm install @malvineous/gamecomp
 
 See `cli/index.js` for example use.  The quick start is:
 
