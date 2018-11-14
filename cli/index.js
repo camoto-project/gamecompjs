@@ -2,13 +2,15 @@ const fs = require('fs');
 const GameCompression = require('../index.js');
 const Debug = require('../util/utl-debug.js');
 
-// Uncomment to enable debugging messages
-//Debug.mute(false);
+if (process.argv[2] == '--debug') {
+	Debug.mute(false);
+	process.argv.shift();
+}
 
 const param = process.argv[2];
 
 if (['-h', '--help', '-?', '?', undefined].some(v => param == v)) {
-	console.log('gamecomp --formats | (+|-)format [opt=val [opt=val ...]]\n');
+	console.log('gamecomp --formats | [--debug] (+|-)format [opt=val [opt=val ...]]\n');
 	console.log('gamecomp --formats    // List algorithms and their options');
 	console.log('gamecomp +example     // Compress/encrypt with "example" algorithm');
 	console.log('gamecomp -example     // Decompress/decrypt with "example"');
