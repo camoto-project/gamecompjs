@@ -25,7 +25,8 @@ module.exports = class Encrypt_XOR_Blood
 
 		const offset = parseInt(params.offset || 0);
 		const seed = parseInt(params.seed || 0);
-		const lenEncrypt = Math.min(parseInt(params.limit || RFF_FILE_CRYPT_LEN), output.length);
+		const limit = params.limit === undefined ? RFF_FILE_CRYPT_LEN : parseInt(params.limit);
+		const lenEncrypt = limit === 0 ? output.length : Math.min(limit, output.length);
 
 		for (let i = 0; i < lenEncrypt; i++) {
 			output[i] ^= seed + ((i + offset) >> 1);

@@ -16,6 +16,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 		content.default_v300 = testutil.loadData('default-v300.bin');
 		content.seed4f_v300 = testutil.loadData('seed4f-v300.bin');
+
+		content.default_full = testutil.loadData('default-full.bin');
 	});
 
 	describe('reveal()', function() {
@@ -40,6 +42,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		it('works with a different offset and seed', function() {
 			const params = {offset: 1, seed: 0x4f};
 			const contentRevealed = handler.reveal(content.seed4f_v300, params);
+			testutil.buffersEqual(standardCleartext, contentRevealed);
+		});
+
+		it('does the full file when limit=0', function() {
+			const params = {limit: 0};
+			const contentRevealed = handler.reveal(content.default_full, params);
 			testutil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
