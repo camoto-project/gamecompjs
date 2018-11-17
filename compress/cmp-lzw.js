@@ -24,7 +24,7 @@ module.exports = class Compress_LZW
 	static metadata() {
 		return {
 			id: FORMAT_ID,
-			title: 'LZW encryption',
+			title: 'LZW compression',
 			options: {
 				initialBits: 'Length of the initial codeword, in bits (9)',
 				maxBits: 'Maximum length of codeword, in bits (14)',
