@@ -1,5 +1,5 @@
 /**
- * @brief Base class and defaults for supported algorithms.
+ * @file Base class and defaults for supported algorithms.
  *
  * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
  *

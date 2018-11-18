@@ -1,5 +1,5 @@
 /**
- * @brief Main library interface.
+ * @file Main library interface.
  *
  * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
  *

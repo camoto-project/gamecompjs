@@ -1,5 +1,5 @@
 /**
- * @brief Blood XOR encryption algorithm.
+ * @file Blood XOR encryption algorithm.
  *
  * This algorithm is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/RFF_Format#Encryption

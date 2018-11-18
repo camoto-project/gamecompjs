@@ -1,5 +1,5 @@
 /**
- * @brief Extra tests for enc-xor-blood.
+ * @file Extra tests for enc-xor-blood.
  *
  * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
  *

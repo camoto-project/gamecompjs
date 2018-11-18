@@ -1,5 +1,5 @@
 /**
- * @brief Extra tests for cmp-lzw.
+ * @file Extra tests for cmp-lzw.
  *
  * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
  *

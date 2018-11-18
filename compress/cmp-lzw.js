@@ -1,5 +1,5 @@
 /**
- * @brief LZW compression algorithm.
+ * @file LZW compression algorithm.
  *
  * This algorithm is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/LZW_Compression

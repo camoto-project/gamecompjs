@@ -1,5 +1,5 @@
 /**
- * @brief Extra tests for cmp-rle-bash.
+ * @file Extra tests for cmp-rle-bash.
  *
  * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
  *

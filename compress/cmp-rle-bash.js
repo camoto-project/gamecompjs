@@ -1,5 +1,5 @@
 /**
- * @brief Monster Bash RLE compression algorithm.
+ * @file Monster Bash RLE compression algorithm.
  *
  * This algorithm is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/DAT_Format_%28Monster_Bash%29
