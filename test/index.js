@@ -44,7 +44,7 @@ GameCompression.listHandlers().forEach(handler => {
 
 		describe('reveal()', function() {
 			it('should reveal correctly', function() {
-				let contentInput = Buffer.from(content.default);
+				let contentInput = Uint8Array.from(content.default);
 				const contentRevealed = handler.reveal(contentInput);
 				testutil.buffersEqual(standardCleartext, contentRevealed);
 				testutil.buffersEqual(content.default, contentInput, 'Input buffer was changed during reveal');
@@ -54,7 +54,7 @@ GameCompression.listHandlers().forEach(handler => {
 		describe('obscure()', function() {
 			it('should obscure correctly', function() {
 				// Copy buffer to ensure no changes
-				let contentInput = Buffer.from(standardCleartext);
+				let contentInput = Uint8Array.from(standardCleartext);
 				const contentObscured = handler.obscure(contentInput);
 				testutil.buffersEqual(content.default, contentObscured);
 				testutil.buffersEqual(standardCleartext, contentInput, 'Input buffer was changed during obscure');
@@ -63,7 +63,7 @@ GameCompression.listHandlers().forEach(handler => {
 
 		describe('obscure() then reveal() are lossless', function() {
 			it(`should be able to undo own transformation`, function() {
-				let contentInput = Buffer.from(standardCleartext);
+				let contentInput = Uint8Array.from(standardCleartext);
 				const contentObscured = handler.obscure(contentInput);
 				const contentRevealed = handler.reveal(contentObscured);
 				testutil.buffersEqual(standardCleartext, contentRevealed);

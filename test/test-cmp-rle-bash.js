@@ -28,8 +28,8 @@ let testutil = new TestUtil(md.id);
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	function run(rev, obs) {
-		const b_rev = Buffer.from(rev);
-		const b_obs = Buffer.from(obs);
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
 
 		it('decodes correctly', function() {
 			const contentRevealed = handler.reveal(b_obs);

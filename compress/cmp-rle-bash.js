@@ -65,7 +65,7 @@ module.exports = class Compress_RLE_MonsterBash
 				prevByte = v;
 			}
 
-			return output.getBuffer();
+			return output.getU8();
 
 		} finally {
 			Debug.pop();
@@ -120,7 +120,7 @@ module.exports = class Compress_RLE_MonsterBash
 				putByte(pending + 1); // will never be > 255
 			}
 
-			return output.getBuffer();
+			return output.getU8();
 
 		} finally {
 			Debug.pop();

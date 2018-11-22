@@ -24,6 +24,17 @@ const TestUtil = require('./util.js');
 const standardCleartext = require('./gen-cleartext.js');
 const GameCompression = require('../index.js');
 
+function makeU8(as) {
+	if (!as.join) console.log(as);
+	let s = as.join('');
+	let ab = new ArrayBuffer(s.length);
+	let u8 = new Uint8Array(ab);
+	for (let i = 0; i < s.length; i++) {
+		u8[i] = s.charCodeAt(i);
+	}
+	return u8;
+}
+
 const handler = GameCompression.getHandler('cmp-lzw');
 const md = handler.metadata();
 let testutil = new TestUtil(md.id);
@@ -106,10 +117,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(67, 9); // C => 258 [BC]
 				bs.writeBits(68, 9); // D => 259 [CD]
 				bs.writeBits(260, 9); // Own codeword
-				const expected = ['A', 'B', 'C', 'D', 'DD'].join('');
+				const expected = ['A', 'B', 'C', 'D', 'DD'];
 
-				const contentRevealed = handler.reveal(input, presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				testutil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 			it(`with double dictionary step`, function() {
@@ -121,10 +132,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(67, 9); // C => 258 [BC]
 				bs.writeBits(258, 9); // BC => 259 [BC,B]
 				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
-				const expected = ['A', 'B', 'C', 'BC', 'BCB'].join('');
+				const expected = ['A', 'B', 'C', 'BC', 'BCB'];
 
-				const contentRevealed = handler.reveal(input, presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				testutil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 			it(`with triple dictionary step`, function() {
@@ -136,10 +147,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(257, 9); // AB => 258 [B,A]
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
-				const expected = ['A', 'B', 'AB', 'BA', 'BAB'].join('');
+				const expected = ['A', 'B', 'AB', 'BA', 'BAB'];
 
-				const contentRevealed = handler.reveal(input, presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				testutil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 			it(`with triple dictionary step and double self-code`, function() {
@@ -152,10 +163,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
 				bs.writeBits(261, 9); // Own codeword [BAB,B] => 261 [BAB,B]
-				const expected = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'].join('');
+				const expected = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'];
 
-				const contentRevealed = handler.reveal(input, presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentRevealed);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				testutil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 		});
@@ -182,10 +193,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(67, 9); // C => 258 [BC]
 				bs.writeBits(68, 9); // D => 259 [CD]
 				bs.writeBits(260, 9); // Own codeword
-				const input = ['A', 'B', 'C', 'D', 'DD'].join('');
+				const input = ['A', 'B', 'C', 'D', 'DD'];
 
-				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				testutil.buffersEqual(expected, contentObscured);
 			});
 
 			it(`with double dictionary step`, function() {
@@ -197,10 +208,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(67, 9); // C => 258 [BC]
 				bs.writeBits(258, 9); // BC => 259 [BC,B]
 				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
-				const input = ['A', 'B', 'C', 'BC', 'BCB'].join('');
+				const input = ['A', 'B', 'C', 'BC', 'BCB'];
 
-				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				testutil.buffersEqual(expected, contentObscured);
 			});
 
 			it(`with triple dictionary step`, function() {
@@ -212,10 +223,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(257, 9); // AB => 258 [B,A]
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
-				const input = ['A', 'B', 'AB', 'BA', 'BAB'].join('');
+				const input = ['A', 'B', 'AB', 'BA', 'BAB'];
 
-				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				testutil.buffersEqual(expected, contentObscured);
 			});
 
 			it(`with triple dictionary step and double self-code`, function() {
@@ -228,10 +239,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
 				bs.writeBits(261, 9); // Own codeword [BAB,B] => 261 [BAB,B]
-				const input = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'].join('');
+				const input = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'];
 
-				const contentObscured = handler.obscure(Buffer.from(input), presets.mbash.params);
-				testutil.buffersEqual(Buffer.from(expected), contentObscured);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				testutil.buffersEqual(expected, contentObscured);
 			});
 
 		});

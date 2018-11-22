@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const BitStream = require('bit-buffer').BitStream;
+const { BitStream, BitView } = require('bit-buffer');
 const { RecordBuffer, RecordType } = require('@malvineous/record-io-buffer');
 const Debug = require('../util/utl-debug.js');
 //Debug.mute(false);
@@ -83,7 +83,7 @@ module.exports = class Compress_LZW
 
 			let output = new RecordBuffer(options.finalSize);
 
-			let bs = new BitStream(content); // TODO endian
+			let bs = new BitStream(new BitView(content.buffer, content.byteOffset, content.byteLength)); // TODO endian
 			if (options.bigEndian) {
 				throw new Error('Big endian not implemented in bitstream library yet');
 			}
@@ -142,7 +142,7 @@ module.exports = class Compress_LZW
 				}
 
 				// Write out the value from the dictionary
-				output.put(Buffer.from(dictVal));
+				output.put(dictVal);
 
 				// The new dictionary entry is the previous codeword plus the first
 				// character we just wrote.
@@ -174,7 +174,7 @@ module.exports = class Compress_LZW
 				}
 			}
 
-			return output.getBuffer();
+			return output.getU8();
 
 		} finally {
 			Debug.pop();
@@ -197,7 +197,6 @@ module.exports = class Compress_LZW
 			options.flushOnReset = parseBool(options.flushOnReset);
 			options.finalSize = parseInt(options.finalSize || 512 * 1024);
 
-			//let buffer = Buffer.alloc(content.length * 2);
 			let buffer = new ArrayBuffer(content.length * 2);
 			let bs = new BitStream(buffer); // TODO endian
 			if (options.bigEndian) {
@@ -236,16 +235,19 @@ module.exports = class Compress_LZW
 					const d = dict[i];
 
 					if ((d.ch === t) && (d.ptr === idxPending)) {
-						let pendingStr = '';
-						if (idxPending !== null) {
-							const ps = dictEntry(dict, idxPending);
-							pendingStr = Buffer.from(ps).toString();
-						}
 						idxPending = i;
 						inDict = true;
-						Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} `
-							+ `[${String.fromCharCode(t)}] in dict as #${idxPending} -> `
-							+ `new pending`);
+
+						if (Debug.enabled) {
+							let pendingStr = '';
+							if (idxPending !== null) {
+								const ps = dictEntry(dict, idxPending);
+								pendingStr = Buffer.from(ps).toString();
+							}
+							Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} `
+								+ `[${String.fromCharCode(t)}] in dict as #${idxPending} -> `
+								+ `new pending`);
+						}
 						// 'continue;' here?
 						break;
 					}
@@ -343,7 +345,7 @@ module.exports = class Compress_LZW
 			const bitsLeft = (8 - (bs.index % 8)) % 8;
 			if (bitsLeft) bs.writeBits(0, bitsLeft);
 
-			return Buffer.from(buffer, 0, bs.byteIndex);
+			return new Uint8Array(buffer, 0, bs.byteIndex);
 
 		} finally {
 			Debug.pop();

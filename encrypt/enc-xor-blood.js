@@ -43,7 +43,7 @@ module.exports = class Encrypt_XOR_Blood
 
 	static reveal(content, params = {})
 	{
-		let output = Buffer.from(content);
+		let output = new Uint8Array(content);
 
 		const offset = parseInt(params.offset || 0);
 		const seed = parseInt(params.seed || 0);
