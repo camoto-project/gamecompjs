@@ -154,10 +154,10 @@ module.exports = class Compress_LZW
 
 				if (Debug.enabled) {
 					const sdest = dictEntry(dict, dict.length-1);
-					const str = Buffer.from(sdest).toString();
+					const str = RecordType.string.fromArray(sdest);
 
 					const cwdest = dictEntry(dict, cw);
-					const cwstr = Buffer.from(cwdest).toString();
+					const cwstr = RecordType.string.fromArray(cwdest);
 
 					Debug.log(`@${offCW} CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
 					offCW++;
@@ -242,7 +242,7 @@ module.exports = class Compress_LZW
 							let pendingStr = '';
 							if (idxPending !== null) {
 								const ps = dictEntry(dict, idxPending);
-								pendingStr = Buffer.from(ps).toString();
+								pendingStr = RecordType.string.fromArray(ps);
 							}
 							Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} `
 								+ `[${String.fromCharCode(t)}] in dict as #${idxPending} -> `
@@ -272,7 +272,7 @@ module.exports = class Compress_LZW
 								let pendingStr = '';
 								if (idxPending !== null) {
 									const ps = dictEntry(dict, idxPending);
-									pendingStr = Buffer.from(ps).toString();
+									pendingStr = RecordType.string.fromArray(ps);
 								}
 
 								Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} `
@@ -294,12 +294,12 @@ module.exports = class Compress_LZW
 
 						if (Debug.enabled) {
 							const sdest = dictEntry(dict, dict.length-1);
-							const str = Buffer.from(sdest).toString();
+							const str = RecordType.string.fromArray(sdest);
 
 							let pendingStr = '';
 							if (idxPending !== null) {
 								const ps = dictEntry(dict, idxPending);
-								pendingStr = Buffer.from(ps).toString();
+								pendingStr = RecordType.string.fromArray(ps);
 							}
 
 							Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} [${String.fromCharCode(t)}] `
