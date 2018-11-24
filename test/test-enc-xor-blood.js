@@ -17,8 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const assert = require('assert');
-
 const TestUtil = require('./util.js');
 const standardCleartext = require('./gen-cleartext.js');
 const GameCompression = require('../index.js');

@@ -20,8 +20,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const Debug = require('../util/utl-debug.js');
-
 const FORMAT_ID = 'enc-xor-blood';
 
 // Number of bytes encrypted from start of file

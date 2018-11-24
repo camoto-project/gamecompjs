@@ -103,7 +103,7 @@ module.exports = class Compress_LZW
 
 			let lenCodeword = options.initialBits || 9;
 			let lastDictCode = (1 << lenCodeword) - 1;
-			let cwPrev = null, chPrev = 0;
+			let cwPrev = null;
 			let offCW = 0;
 			while (bs.bitsLeft >= lenCodeword) {
 

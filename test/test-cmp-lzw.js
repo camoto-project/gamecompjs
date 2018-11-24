@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const assert = require('assert');
 const BitStream = require('bit-buffer').BitStream;
 
 const TestUtil = require('./util.js');
@@ -25,7 +24,6 @@ const standardCleartext = require('./gen-cleartext.js');
 const GameCompression = require('../index.js');
 
 function makeU8(as) {
-	if (!as.join) console.log(as);
 	let s = as.join('');
 	let ab = new ArrayBuffer(s.length);
 	let u8 = new Uint8Array(ab);

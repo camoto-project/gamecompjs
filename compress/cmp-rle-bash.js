@@ -39,7 +39,7 @@ module.exports = class Compress_RLE_MonsterBash
 		};
 	}
 
-	static reveal(content, options = {})
+	static reveal(content)
 	{
 		try {
 			const md = this.metadata();
@@ -72,7 +72,7 @@ module.exports = class Compress_RLE_MonsterBash
 		}
 	}
 
-	static obscure(content, options = {}) {
+	static obscure(content) {
 		try {
 			const md = this.metadata();
 			Debug.push(md.id, 'obscure');
