@@ -124,6 +124,9 @@ module.exports = class Compress_LZW
 					if (options.flushOnReset) {
 						// TODO flush byte
 					}
+					if (options.resetCodewordLen) {
+						lenCodeword = options.initialBits;
+					}
 					continue;
 				}
 
@@ -133,12 +136,19 @@ module.exports = class Compress_LZW
 				} else {
 					// Codeword isn't in the dictionary, act as if we got the previous
 					// codeword again.
-					dictVal = dictEntry(dict, cwPrev);
-					// Append the first char onto the end of the dictionary string.  This
-					// is what happens when we add it to the dictionary below, so it's
-					// like we are writing out the dictionary value for this codeword
-					// just before it has made it into the dictionary.
-					dictVal.push(dictVal[0]);
+					if (dict[cwPrev] !== undefined) {
+						dictVal = dictEntry(dict, cwPrev);
+						// Append the first char onto the end of the dictionary string.  This
+						// is what happens when we add it to the dictionary below, so it's
+						// like we are writing out the dictionary value for this codeword
+						// just before it has made it into the dictionary.
+						if (dict.length <= lastDictCode) { // unless the dict is full
+							dictVal.push(dictVal[0]);
+						}
+					} else {
+						console.error(`Previous codeword ${cwPrev} isn't in the dictionary!  Aborting.`);
+						break;
+					}
 				}
 
 				// Write out the value from the dictionary
@@ -146,11 +156,13 @@ module.exports = class Compress_LZW
 
 				// The new dictionary entry is the previous codeword plus the first
 				// character we just wrote.
-				dict.push({
-					ptr: cwPrev,
-					ch: dictVal[0],
-					//full: [...(dict[cwPrev] && dict[cwPrev].full || []), dictVal[0]],
-				});
+				if (dict.length <= lastDictCode) { // unless the dict is full
+					dict.push({
+						ptr: cwPrev,
+						ch: dictVal[0],
+						//full: [...(dict[cwPrev] && dict[cwPrev].full || []), dictVal[0]],
+					});
+				}
 
 				if (Debug.enabled) {
 					const sdest = dictEntry(dict, dict.length-1);
@@ -168,9 +180,21 @@ module.exports = class Compress_LZW
 				// bits are still left to read.
 				if (dict.length > lastDictCode) {
 					// Time to extend bitwidth
-					Debug.log('Codeword reached maximum width at', lenCodeword, 'bits, now at', dictSize, 'of', lastDictCode);
-					lenCodeword++;
-					lastDictCode = (1 << lenCodeword) - 1;
+					Debug.log('Codeword reached maximum width at', lenCodeword, 'bits, now at', dict.length, 'of', lastDictCode);
+					if (lenCodeword < options.maxBits) {
+						lenCodeword++;
+						lastDictCode = (1 << lenCodeword) - 1;
+					} else {
+						// Reached maximum codeword length
+						if (options.resetDictWhenFull) {
+							Debug.log('Emptying dictionary');
+							resetDict();
+							if (options.resetCodewordLen) {
+								lenCodeword = options.initialBits;
+							}
+						}
+					}
+					Debug.log('Codeword size is now', lenCodeword, 'bits');
 				}
 			}
 
