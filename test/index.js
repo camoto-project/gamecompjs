@@ -46,8 +46,8 @@ GameCompression.listHandlers().forEach(handler => {
 			it('should reveal correctly', function() {
 				let contentInput = Uint8Array.from(content.default);
 				const contentRevealed = handler.reveal(contentInput);
-				testutil.buffersEqual(standardCleartext, contentRevealed);
-				testutil.buffersEqual(content.default, contentInput, 'Input buffer was changed during reveal');
+				TestUtil.buffersEqual(standardCleartext, contentRevealed);
+				TestUtil.buffersEqual(content.default, contentInput, 'Input buffer was changed during reveal');
 			});
 		});
 
@@ -56,8 +56,8 @@ GameCompression.listHandlers().forEach(handler => {
 				// Copy buffer to ensure no changes
 				let contentInput = Uint8Array.from(standardCleartext);
 				const contentObscured = handler.obscure(contentInput);
-				testutil.buffersEqual(content.default, contentObscured);
-				testutil.buffersEqual(standardCleartext, contentInput, 'Input buffer was changed during obscure');
+				TestUtil.buffersEqual(content.default, contentObscured);
+				TestUtil.buffersEqual(standardCleartext, contentInput, 'Input buffer was changed during obscure');
 			});
 		});
 
@@ -66,7 +66,7 @@ GameCompression.listHandlers().forEach(handler => {
 				let contentInput = Uint8Array.from(standardCleartext);
 				const contentObscured = handler.obscure(contentInput);
 				const contentRevealed = handler.reveal(contentObscured);
-				testutil.buffersEqual(standardCleartext, contentRevealed);
+				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
 	});

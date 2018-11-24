@@ -24,7 +24,7 @@ const path = require('path');
 function hexdump(d) {
 	let s = '', h = '', t = '';
 	function addRow(i) {
-		s += (i - 15).toString(16).padStart(6, '0') + '  ' + h + '  ' + t + "\n";
+		s += (i - 15).toString(16).padStart(6, '0') + '  ' + h + '  ' + t + '\n';
 		h = t = '';
 	}
 	let i;
@@ -61,7 +61,15 @@ module.exports = class TestUtil {
 		this.idHandler = idHandler;
 	}
 
-	buffersEqual(expected, actual, msg) {
+	loadData(filename) {
+		const buffer = fs.readFileSync(path.resolve(__dirname, this.idHandler, filename));
+		let ab = new ArrayBuffer(buffer.length);
+		let u8 = new Uint8Array(ab);
+		u8.set(buffer);
+		return u8;
+	}
+
+	static buffersEqual(expected, actual, msg) {
 		if (expected instanceof ArrayBuffer) {
 			expected = new Uint8Array(expected);
 		}
@@ -86,11 +94,7 @@ module.exports = class TestUtil {
 		}
 	}
 
-	loadData(filename) {
-		const buffer = fs.readFileSync(path.resolve(__dirname, this.idHandler, filename));
-		let ab = new ArrayBuffer(buffer.length);
-		let u8 = new Uint8Array(ab);
-		u8.set(buffer);
-		return u8;
+	static u8FromString(s) {
+		return Uint8Array.from(s.split(''), s => s.charCodeAt(0));
 	}
 };

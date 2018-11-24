@@ -102,7 +102,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 			it(`works with ${p.title} settings`, function() {
 				const contentRevealed = handler.reveal(content[id], p.params);
-				testutil.buffersEqual(standardCleartext, contentRevealed);
+				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
 
@@ -120,7 +120,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const expected = ['A', 'B', 'C', 'D', 'DD'];
 
 				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
-				testutil.buffersEqual(makeU8(expected), contentRevealed);
+				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 			it(`with double dictionary step`, function() {
@@ -135,7 +135,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const expected = ['A', 'B', 'C', 'BC', 'BCB'];
 
 				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
-				testutil.buffersEqual(makeU8(expected), contentRevealed);
+				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 			it(`with triple dictionary step`, function() {
@@ -150,7 +150,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const expected = ['A', 'B', 'AB', 'BA', 'BAB'];
 
 				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
-				testutil.buffersEqual(makeU8(expected), contentRevealed);
+				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 			it(`with triple dictionary step and double self-code`, function() {
@@ -166,7 +166,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const expected = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'];
 
 				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
-				testutil.buffersEqual(makeU8(expected), contentRevealed);
+				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
 		});
@@ -178,7 +178,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 			it(`works with ${p.title} settings`, function() {
 				const contentObscured = handler.obscure(standardCleartext, p.params);
-				testutil.buffersEqual(content[id], contentObscured);
+				TestUtil.buffersEqual(content[id], contentObscured);
 			});
 		});
 
@@ -196,7 +196,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const input = ['A', 'B', 'C', 'D', 'DD'];
 
 				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
-				testutil.buffersEqual(expected, contentObscured);
+				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
 			it(`with double dictionary step`, function() {
@@ -211,7 +211,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const input = ['A', 'B', 'C', 'BC', 'BCB'];
 
 				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
-				testutil.buffersEqual(expected, contentObscured);
+				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
 			it(`with triple dictionary step`, function() {
@@ -226,7 +226,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const input = ['A', 'B', 'AB', 'BA', 'BAB'];
 
 				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
-				testutil.buffersEqual(expected, contentObscured);
+				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
 			it(`with triple dictionary step and double self-code`, function() {
@@ -242,7 +242,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				const input = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'];
 
 				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
-				testutil.buffersEqual(expected, contentObscured);
+				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
 		});
@@ -255,7 +255,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			it(`works with ${p.title} settings`, function() {
 				const contentObscured = handler.obscure(standardCleartext, p.params);
 				const contentRevealed = handler.reveal(contentObscured, p.params);
-				testutil.buffersEqual(standardCleartext, contentRevealed);
+				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
 	});

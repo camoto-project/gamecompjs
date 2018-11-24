@@ -33,12 +33,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 		it('decodes correctly', function() {
 			const contentRevealed = handler.reveal(b_obs);
-			testutil.buffersEqual(b_rev, contentRevealed);
+			TestUtil.buffersEqual(b_rev, contentRevealed);
 		});
 
 		it('encodes correctly', function() {
 			const contentObscured = handler.obscure(b_rev);
-			testutil.buffersEqual(b_obs, contentObscured);
+			TestUtil.buffersEqual(b_obs, contentObscured);
 		});
 	}
 

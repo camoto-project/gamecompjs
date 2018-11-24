@@ -44,31 +44,31 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		it('works with a different seed', function() {
 			const params = {seed: 0x4f};
 			const contentRevealed = handler.reveal(content.seed4f, params);
-			testutil.buffersEqual(standardCleartext, contentRevealed);
+			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a string seed', function() {
 			const params = {seed: '0x4f'};
 			const contentRevealed = handler.reveal(content.seed4f, params);
-			testutil.buffersEqual(standardCleartext, contentRevealed);
+			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different offset', function() {
 			const params = {offset: 1};
 			const contentRevealed = handler.reveal(content.default_v300, params);
-			testutil.buffersEqual(standardCleartext, contentRevealed);
+			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different offset and seed', function() {
 			const params = {offset: 1, seed: 0x4f};
 			const contentRevealed = handler.reveal(content.seed4f_v300, params);
-			testutil.buffersEqual(standardCleartext, contentRevealed);
+			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('does the full file when limit=0', function() {
 			const params = {limit: 0};
 			const contentRevealed = handler.reveal(content.default_full, params);
-			testutil.buffersEqual(standardCleartext, contentRevealed);
+			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 	});
@@ -78,13 +78,13 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		it('works with a different seed', function() {
 			const params = {seed: 0x4f};
 			const contentObscured = handler.obscure(standardCleartext, params);
-			testutil.buffersEqual(content.seed4f, contentObscured);
+			TestUtil.buffersEqual(content.seed4f, contentObscured);
 		});
 
 		it('works with a string seed', function() {
 			const params = {seed: '0x4f'};
 			const contentObscured = handler.obscure(standardCleartext, params);
-			testutil.buffersEqual(content.seed4f, contentObscured);
+			TestUtil.buffersEqual(content.seed4f, contentObscured);
 		});
 
 	});
