@@ -1,6 +1,6 @@
 {
   "name": "@malvineous/gamecomp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Apply and remove compression and encryption algorithms used by DOS games",
   "main": "index.js",
   "scripts": {
