@@ -70,6 +70,7 @@ module.exports = class TestUtil {
 				for (let i = 1; i <= 20; i++) {
 					const fn = `error${i}.bin`;
 					if (!fs.existsSync(fn)) {
+						// eslint-disable-next-line no-console
 						console.warn(`** Saving actual data to ${fn}`);
 						fs.writeFileSync(fn, actual);
 						break;
