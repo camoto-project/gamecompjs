@@ -89,7 +89,6 @@ module.exports = class Compress_LZW
 			}
 
 			let dict = [];
-			let dictSize; // current dict size
 			function resetDict() {
 				for (let i = 0; i < 256; i++) {
 					dict[i] = {
@@ -171,7 +170,7 @@ module.exports = class Compress_LZW
 					const cwdest = dictEntry(dict, cw);
 					const cwstr = RecordType.string.fromArray(cwdest);
 
-					Debug.log(`@${offCW} CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
+					Debug.log(`@${offCW}->0x${output.getPos().toString(16)} CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
 					offCW++;
 				}
 				cwPrev = cw;
@@ -244,9 +243,10 @@ module.exports = class Compress_LZW
 			let idxPending = null;
 			let cwPrev = null;
 
-			let offCW = 0; // offset of codeword, in number of codewords from start
+			let offCW = -1; // offset of codeword, in number of codewords from start
 			for (let t of content) {
-				Debug.log(`Next char ${String.fromCharCode(t)}`);
+				offCW++;
+				Debug.log(`@0x${offCW.toString(16)} Next char ${String.fromCharCode(t)}`);
 
 				// Find t in the dictionary
 				let inDict = false;
@@ -268,7 +268,7 @@ module.exports = class Compress_LZW
 								const ps = dictEntry(dict, idxPending);
 								pendingStr = RecordType.string.fromArray(ps);
 							}
-							Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} `
+							Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending [${pendingStr}] + ${t} `
 								+ `[${String.fromCharCode(t)}] in dict as #${idxPending} -> `
 								+ `new pending`);
 						}
@@ -299,7 +299,7 @@ module.exports = class Compress_LZW
 									pendingStr = RecordType.string.fromArray(ps);
 								}
 
-								Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} `
+								Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending [${pendingStr}] + ${t} `
 									+ `[${String.fromCharCode(t)}] matches prev code + `
 									+ `prevcode[0], using self-referencing codeword `
 									+ `#${dict.length}`);
@@ -326,10 +326,9 @@ module.exports = class Compress_LZW
 								pendingStr = RecordType.string.fromArray(ps);
 							}
 
-							Debug.log(`@${offCW} Pending [${pendingStr}] + ${t} [${String.fromCharCode(t)}] `
+							Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending [${pendingStr}] + ${t} [${String.fromCharCode(t)}] `
 								+ `not in dict, writing pending as codeword ${idxPending} => new `
 								+ `dict #${dict.length-1} <- ${idxPending} [${str}]`);
-							offCW++;
 						}
 					} catch (e) {
 						Debug.log('Bitstream error, ending early:', e);
