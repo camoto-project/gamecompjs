@@ -250,11 +250,25 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		Object.keys(presets).forEach(id => {
 			const p = presets[id];
 
+			// Only the default settings are covered by the default tests, so run this
+			// one again with different options.
 			it(`works with ${p.title} settings`, function() {
 				const contentObscured = handler.obscure(standardCleartext, p.params);
 				const contentRevealed = handler.reveal(contentObscured, p.params);
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
+
+			it(`enough data to hit dictionary limit`, function() {
+				let u8input = new Uint8Array(7168);
+				for (let i = 0; i < u8input.length; i++) {
+					u8input[i] = ((i*5) & 0xFF) ^ (i >> 5);
+				}
+
+				const contentObscured = handler.obscure(u8input, presets.mbash.params);
+				const contentRevealed = handler.reveal(contentObscured, presets.mbash.params);
+				TestUtil.buffersEqual(u8input, contentRevealed);
+			});
+
 		});
 	});
 });

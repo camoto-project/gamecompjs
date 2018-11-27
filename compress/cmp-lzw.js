@@ -307,11 +307,13 @@ module.exports = class Compress_LZW
 							idxPending = dict.length;
 							t = null;
 						}
-						let newDictEntry = {
-							ptr: cwPrev,
-							ch: dictVal[0],
-						};
-						dict.push(newDictEntry);
+
+						if (dict.length <= lastDictCode) { // unless the dict is full
+							dict.push({
+								ptr: cwPrev,
+								ch: dictVal[0],
+							});
+						}
 
 						bs.writeBits(idxPending, lenCodeword);
 						cwPrev = idxPending;
@@ -338,9 +340,21 @@ module.exports = class Compress_LZW
 
 					if (dict.length > lastDictCode) {
 						// Time to extend bitwidth
-						Debug.log(`@${bs.indexByte}: Codeword reached max val at width=${lenCodeword}, dict now at ${dict.length} of ${lastDictCode}`);
-						lenCodeword++;
-						lastDictCode = (1 << lenCodeword) - 1;
+						Debug.log(`Codeword reached max val at width=${lenCodeword}, dict now at ${dict.length} of ${lastDictCode}`);
+						if (lenCodeword < options.maxBits) {
+							lenCodeword++;
+							lastDictCode = (1 << lenCodeword) - 1;
+						} else {
+							// Reached maximum codeword length
+							if (options.resetDictWhenFull) {
+								Debug.log('Emptying dictionary');
+								resetDict();
+								if (options.resetCodewordLen) {
+									lenCodeword = options.initialBits;
+								}
+							}
+						}
+						Debug.log('Codeword size is now', lenCodeword, 'bits');
 					}
 
 					// We can cheat here because we know the first 256 dictionary entries
