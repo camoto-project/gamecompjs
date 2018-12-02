@@ -171,6 +171,22 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
+			it(`with single dictionary step, double self-code and 0x00 value`, function() {
+				let input = new ArrayBuffer(7);
+				let bs = new BitStream(input);
+
+				bs.writeBits(65, 9);  // A => 256 [A]
+				bs.writeBits(66, 9);  // B => 257 [AB]
+				bs.writeBits(0, 9);   // 0 => 258 [B,0]
+				bs.writeBits(259, 9); // Own codeword [0,0] => 259 [0,0]
+				bs.writeBits(260, 9); // Own codeword [00,0] => 260 [00,0]
+				bs.writeBits(67, 9);  // Trailer to ensure nulls aren't lost
+				const expected = ['A', 'B', '\u0000', '\u0000\u0000', '\u0000\u0000\u0000', 'C'];
+
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.options);
+				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
+			});
+
 		});
 	});
 
