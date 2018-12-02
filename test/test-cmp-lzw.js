@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+const assert = require('assert');
 const BitStream = require('bit-buffer').BitStream;
 
 const TestUtil = require('./util.js');
@@ -99,6 +100,9 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
+				assert.notEqual(content[id], null, `Content for ${p.title} is null`);
+				assert.notEqual(content[id], undefined, `Content for ${p.title} is undefined`);
+
 				const contentRevealed = handler.reveal(content[id], p.options);
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
@@ -175,6 +179,9 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
+				assert.notEqual(content[id], null, `Content for ${p.title} is null`);
+				assert.notEqual(content[id], undefined, `Content for ${p.title} is undefined`);
+
 				const contentObscured = handler.obscure(standardCleartext, p.options);
 				TestUtil.buffersEqual(content[id], contentObscured);
 			});
