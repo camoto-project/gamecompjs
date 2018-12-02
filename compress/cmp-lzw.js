@@ -42,6 +42,10 @@ function parseBool(s) {
 function dictEntry(dict, i) {
 	let s = [];
 	do {
+		if (!dict[i]) {
+			console.trace(`Tried to retrieve undefined dict[${i}]`);
+			break;
+		}
 		s.unshift(dict[i].ch);
 		i = dict[i].ptr;
 	} while (i !== null);
