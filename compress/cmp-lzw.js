@@ -94,16 +94,15 @@ module.exports = class Compress_LZW
 
 			let output = new RecordBuffer(options.finalSize);
 
-			let bs = new BitStream(new BitView(content.buffer, content.byteOffset, content.byteLength)); // TODO endian
-			if (options.bigEndian) {
-				throw new Error('Big endian not implemented in bitstream library yet');
-			}
+			let bs = new BitStream(new BitView(content.buffer, content.byteOffset, content.byteLength));
+			bs.bigEndian = options.bigEndian;
 
-			let dict = [];
+			let dict;
 			function resetDict() {
-				for (let i = 0; i < 256; i++) {
+				dict = [];
+				for (let i = 0; i < options.cwFirst; i++) {
 					dict[i] = {
-						ch: i,
+						ch: i < 256 ? i : 0,
 						ptr: null,
 						//full: [i],
 					};
@@ -112,23 +111,43 @@ module.exports = class Compress_LZW
 			resetDict();
 
 			let lenCodeword = options.initialBits || 9;
-			let lastDictCode = (1 << lenCodeword) - 1;
 			let cwPrev = null;
 			let offCW = 0;
+
+			let nextDictCode, lastDictCode, cwEOF, cwDictReset;
+			function recalcCodewords() {
+				nextDictCode = 1 << lenCodeword;
+				lastDictCode = nextDictCode - 1;
+				cwEOF = options.cwEOF;
+				if (cwEOF <= 0) {
+					cwEOF += nextDictCode;
+					lastDictCode = Math.min(cwEOF - 1, lastDictCode);
+				}
+
+				cwDictReset = options.cwDictReset;
+				if (cwDictReset <= 0) {
+					cwDictReset += nextDictCode;
+					lastDictCode = Math.min(cwDictReset - 1, lastDictCode);
+				}
+				Debug.log(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
+			}
+			recalcCodewords();
+
 			while (bs.bitsLeft >= lenCodeword) {
 
 				let cw;
 				try {
 					cw = bs.readBits(lenCodeword, false);
+					Debug.log(`@0x${bs.byteIndex.toString(16)} -> CW#${offCW}: end of next codeword ${cw}`);
 				} catch (e) {
 					console.error(e);
 					break;
 				}
-				if (cw === options.cwEOF) {
+				if (cw === cwEOF) {
 					Debug.log('Received EOF codeword');
 					break;
 				}
-				if (cw === options.cwDictReset) {
+				if (cw === cwDictReset) {
 					Debug.log('Received dictionary reset codeword');
 					resetDict();
 					if (options.flushOnReset) {
@@ -136,6 +155,7 @@ module.exports = class Compress_LZW
 					}
 					if (options.resetCodewordLen) {
 						lenCodeword = options.initialBits;
+						recalcCodewords();
 					}
 					continue;
 				}
@@ -146,6 +166,7 @@ module.exports = class Compress_LZW
 				} else {
 					// Codeword isn't in the dictionary, act as if we got the previous
 					// codeword again.
+					Debug.log(`CW ${cw} isn't in dict, using prev CW ${cwPrev}`);
 					if (dict[cwPrev] !== undefined) {
 						dictVal = dictEntry(dict, cwPrev);
 						// Append the first char onto the end of the dictionary string.  This
@@ -183,10 +204,13 @@ module.exports = class Compress_LZW
 					const cwstr = RecordType.string.fromArray(cwdest)
 						.replace(/\u0000/g, '\u2400'); // make nulls visible
 
-					Debug.log(`@${offCW}->0x${output.getPos().toString(16)} `
+					Debug.log(`CW#${offCW} -> @0x${output.getPos().toString(16)} `
 						+ `CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
 					offCW++;
 				}
+
+				// This may put an invalid codeword into the dictionary, perhaps we
+				// should skip this step if 'cw' is invalid?
 				cwPrev = cw;
 
 				// Do this last so the codeword gets increased before we check how many
@@ -207,7 +231,7 @@ module.exports = class Compress_LZW
 							}
 						}
 					}
-					Debug.log('Codeword size is now', lenCodeword, 'bits');
+					recalcCodewords();
 				}
 			}
 
@@ -235,10 +259,8 @@ module.exports = class Compress_LZW
 			options.finalSize = parseInt(options.finalSize || 512 * 1024);
 
 			let buffer = new ArrayBuffer(content.length * 2);
-			let bs = new BitStream(buffer); // TODO endian
-			if (options.bigEndian) {
-				throw new Error('Big endian not implemented in bitstream library yet');
-			}
+			let bs = new BitStream(buffer);
+			bs.bigEndian = options.bigEndian;
 
 			let dict = [];
 			function resetDict() {
@@ -260,7 +282,7 @@ module.exports = class Compress_LZW
 			let offCW = -1; // offset of codeword, in number of codewords from start
 			for (let t of content) {
 				offCW++;
-				Debug.log(`@0x${offCW.toString(16)} Next char ${String.fromCharCode(t)}`);
+				Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Next char ${String.fromCharCode(t)}`);
 
 				// Find t in the dictionary
 				let inDict = false;
