@@ -172,12 +172,15 @@ module.exports = class Compress_LZW
 
 				if (Debug.enabled) {
 					const sdest = dictEntry(dict, dict.length-1);
-					const str = RecordType.string.fromArray(sdest);
+					const str = RecordType.string.fromArray(sdest)
+						.replace(/\u0000/g, '\u2400'); // make nulls visible
 
-					const cwdest = dictEntry(dict, cw);
-					const cwstr = RecordType.string.fromArray(cwdest);
+					const cwdest = dictVal;
+					const cwstr = RecordType.string.fromArray(cwdest)
+						.replace(/\u0000/g, '\u2400'); // make nulls visible
 
-					Debug.log(`@${offCW}->0x${output.getPos().toString(16)} CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
+					Debug.log(`@${offCW}->0x${output.getPos().toString(16)} `
+						+ `CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
 					offCW++;
 				}
 				cwPrev = cw;
