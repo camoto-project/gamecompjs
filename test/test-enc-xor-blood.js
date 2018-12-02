@@ -40,32 +40,32 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	describe('reveal()', function() {
 
 		it('works with a different seed', function() {
-			const params = {seed: 0x4f};
-			const contentRevealed = handler.reveal(content.seed4f, params);
+			const options = {seed: 0x4f};
+			const contentRevealed = handler.reveal(content.seed4f, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a string seed', function() {
-			const params = {seed: '0x4f'};
-			const contentRevealed = handler.reveal(content.seed4f, params);
+			const options = {seed: '0x4f'};
+			const contentRevealed = handler.reveal(content.seed4f, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different offset', function() {
-			const params = {offset: 1};
-			const contentRevealed = handler.reveal(content.default_v300, params);
+			const options = {offset: 1};
+			const contentRevealed = handler.reveal(content.default_v300, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different offset and seed', function() {
-			const params = {offset: 1, seed: 0x4f};
-			const contentRevealed = handler.reveal(content.seed4f_v300, params);
+			const options = {offset: 1, seed: 0x4f};
+			const contentRevealed = handler.reveal(content.seed4f_v300, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('does the full file when limit=0', function() {
-			const params = {limit: 0};
-			const contentRevealed = handler.reveal(content.default_full, params);
+			const options = {limit: 0};
+			const contentRevealed = handler.reveal(content.default_full, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
@@ -74,14 +74,14 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	describe('obscure()', function() {
 
 		it('works with a different seed', function() {
-			const params = {seed: 0x4f};
-			const contentObscured = handler.obscure(standardCleartext, params);
+			const options = {seed: 0x4f};
+			const contentObscured = handler.obscure(standardCleartext, options);
 			TestUtil.buffersEqual(content.seed4f, contentObscured);
 		});
 
 		it('works with a string seed', function() {
-			const params = {seed: '0x4f'};
-			const contentObscured = handler.obscure(standardCleartext, params);
+			const options = {seed: '0x4f'};
+			const contentObscured = handler.obscure(standardCleartext, options);
 			TestUtil.buffersEqual(content.seed4f, contentObscured);
 		});
 

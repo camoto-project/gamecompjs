@@ -30,7 +30,7 @@ module.exports = class Encrypt_GLB_Raptor
 		return {
 			id: FORMAT_ID,
 			title: 'Raptor GLB encryption',
-			params: {
+			options: {
 				key: 'Encryption key (string)',
 				seed: 'Initial index into key, default 1',
 				blockSize: 'Reset key index after this many bytes, 0 to disable',
@@ -38,13 +38,13 @@ module.exports = class Encrypt_GLB_Raptor
 		};
 	}
 
-	static reveal(content, params = {})
+	static reveal(content, options = {})
 	{
 		let output = new Uint8Array(content.length);
 
-		const seed = parseInt(params.seed || 1);
-		const key = RecordType.string.toU8(params.key || '32768GLB');
-		const lenBlock = parseInt(params.blockSize || 0);
+		const seed = parseInt(options.seed || 1);
+		const key = RecordType.string.toU8(options.key || '32768GLB');
+		const lenBlock = parseInt(options.blockSize || 0);
 		const lenKey = key.length;
 
 		let idxKey = seed;
@@ -63,12 +63,12 @@ module.exports = class Encrypt_GLB_Raptor
 		return output;
 	}
 
-	static obscure(content, params = {}) {
+	static obscure(content, options = {}) {
 		let output = new Uint8Array(content.length);
 
-		const seed = parseInt(params.seed || 1);
-		const key = RecordType.string.toU8(params.key || '32768GLB');
-		const lenBlock = parseInt(params.blockSize || 0);
+		const seed = parseInt(options.seed || 1);
+		const key = RecordType.string.toU8(options.key || '32768GLB');
+		const lenBlock = parseInt(options.blockSize || 0);
 		const lenKey = key.length;
 
 		let idxKey = seed;

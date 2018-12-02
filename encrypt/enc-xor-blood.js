@@ -31,7 +31,7 @@ module.exports = class Encrypt_XOR_Blood
 		return {
 			id: FORMAT_ID,
 			title: 'Blood XOR encryption',
-			params: {
+			options: {
 				offset: 'Key offset (v3.1 = 0, v3.0 = 1)',
 				seed: 'Initial seed for the first XOR byte',
 				limit: 'Number of bytes to affect (0=all, default is ' + RFF_FILE_CRYPT_LEN + ')',
@@ -39,13 +39,13 @@ module.exports = class Encrypt_XOR_Blood
 		};
 	}
 
-	static reveal(content, params = {})
+	static reveal(content, options = {})
 	{
 		let output = new Uint8Array(content);
 
-		const offset = parseInt(params.offset || 0);
-		const seed = parseInt(params.seed || 0);
-		const limit = params.limit === undefined ? RFF_FILE_CRYPT_LEN : parseInt(params.limit);
+		const offset = parseInt(options.offset || 0);
+		const seed = parseInt(options.seed || 0);
+		const limit = options.limit === undefined ? RFF_FILE_CRYPT_LEN : parseInt(options.limit);
 		const lenEncrypt = limit === 0 ? output.length : Math.min(limit, output.length);
 
 		for (let i = 0; i < lenEncrypt; i++) {
@@ -55,9 +55,9 @@ module.exports = class Encrypt_XOR_Blood
 		return output;
 	}
 
-	static obscure(content, params = {}) {
+	static obscure(content, options = {}) {
 		// Symmetric algorithm
-		return this.reveal(content, params);
+		return this.reveal(content, options);
 	}
 
 };

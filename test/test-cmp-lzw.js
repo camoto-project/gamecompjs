@@ -43,7 +43,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		/*
 		epfs: {
 			title: 'Lion King',
-			params: {
+			options: {
 				initialBits: 9,
 				maxBits: 14,
 				cwEOF: -1,    // max codeword
@@ -55,7 +55,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		*/
 		mbash: {
 			title: 'Monster Bash',
-			params: {
+			options: {
 				initialBits: 9,
 				maxBits: 12,
 				//cwEOF: 256,
@@ -66,7 +66,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		/*
 		sierra: {
 			title: 'Sierra',
-			params: {
+			options: {
 				initialBits: 9,
 				maxBits: 9,
 				cwEOF: 257,
@@ -77,7 +77,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		},
 		stellar7: {
 			title: 'Stellar 7',
-			params: {
+			options: {
 				initialBits: 9,
 				maxBits: 12,
 				cwEOF: undefined,
@@ -99,7 +99,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				const contentRevealed = handler.reveal(content[id], p.params);
+				const contentRevealed = handler.reveal(content[id], p.options);
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
@@ -117,7 +117,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(260, 9); // Own codeword
 				const expected = ['A', 'B', 'C', 'D', 'DD'];
 
-				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.options);
 				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
@@ -132,7 +132,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
 				const expected = ['A', 'B', 'C', 'BC', 'BCB'];
 
-				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.options);
 				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
@@ -147,7 +147,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
 				const expected = ['A', 'B', 'AB', 'BA', 'BAB'];
 
-				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.options);
 				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
@@ -163,7 +163,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(261, 9); // Own codeword [BAB,B] => 261 [BAB,B]
 				const expected = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'];
 
-				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.params);
+				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.options);
 				TestUtil.buffersEqual(makeU8(expected), contentRevealed);
 			});
 
@@ -175,7 +175,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				const contentObscured = handler.obscure(standardCleartext, p.params);
+				const contentObscured = handler.obscure(standardCleartext, p.options);
 				TestUtil.buffersEqual(content[id], contentObscured);
 			});
 		});
@@ -193,7 +193,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(260, 9); // Own codeword
 				const input = ['A', 'B', 'C', 'D', 'DD'];
 
-				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.options);
 				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
@@ -208,7 +208,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
 				const input = ['A', 'B', 'C', 'BC', 'BCB'];
 
-				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.options);
 				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
@@ -223,7 +223,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
 				const input = ['A', 'B', 'AB', 'BA', 'BAB'];
 
-				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.options);
 				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
@@ -239,7 +239,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				bs.writeBits(261, 9); // Own codeword [BAB,B] => 261 [BAB,B]
 				const input = ['A', 'B', 'AB', 'BA', 'BAB', 'BABB'];
 
-				const contentObscured = handler.obscure(makeU8(input), presets.mbash.params);
+				const contentObscured = handler.obscure(makeU8(input), presets.mbash.options);
 				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
@@ -253,8 +253,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			// Only the default settings are covered by the default tests, so run this
 			// one again with different options.
 			it(`works with ${p.title} settings`, function() {
-				const contentObscured = handler.obscure(standardCleartext, p.params);
-				const contentRevealed = handler.reveal(contentObscured, p.params);
+				const contentObscured = handler.obscure(standardCleartext, p.options);
+				const contentRevealed = handler.reveal(contentObscured, p.options);
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 
@@ -264,8 +264,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 					u8input[i] = ((i*5) & 0xFF) ^ (i >> 5);
 				}
 
-				const contentObscured = handler.obscure(u8input, presets.mbash.params);
-				const contentRevealed = handler.reveal(contentObscured, presets.mbash.params);
+				const contentObscured = handler.obscure(u8input, presets.mbash.options);
+				const contentRevealed = handler.reveal(contentObscured, presets.mbash.options);
 				TestUtil.buffersEqual(u8input, contentRevealed);
 			});
 

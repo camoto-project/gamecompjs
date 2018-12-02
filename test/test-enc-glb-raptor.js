@@ -35,20 +35,20 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	describe('reveal()', function() {
 
 		it('works with a block size', function() {
-			const params = {blockSize: 28};
-			const contentRevealed = handler.reveal(content.fat, params);
+			const options = {blockSize: 28};
+			const contentRevealed = handler.reveal(content.fat, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a string block size', function() {
-			const params = {blockSize: '28'};
-			const contentRevealed = handler.reveal(content.fat, params);
+			const options = {blockSize: '28'};
+			const contentRevealed = handler.reveal(content.fat, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different key', function() {
-			const params = {key: 'Hello'};
-			const contentRevealed = handler.reveal(content.hello, params);
+			const options = {key: 'Hello'};
+			const contentRevealed = handler.reveal(content.hello, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
@@ -57,20 +57,20 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	describe('obscure()', function() {
 
 		it('works with a block size', function() {
-			const params = {blockSize: 28};
-			const contentObscured = handler.obscure(standardCleartext, params);
+			const options = {blockSize: 28};
+			const contentObscured = handler.obscure(standardCleartext, options);
 			TestUtil.buffersEqual(content.fat, contentObscured);
 		});
 
 		it('works with a string block size', function() {
-			const params = {blockSize: '28'};
-			const contentObscured = handler.obscure(standardCleartext, params);
+			const options = {blockSize: '28'};
+			const contentObscured = handler.obscure(standardCleartext, options);
 			TestUtil.buffersEqual(content.fat, contentObscured);
 		});
 
 		it('works with a different key', function() {
-			const params = {key: 'Hello'};
-			const contentObscured = handler.obscure(standardCleartext, params);
+			const options = {key: 'Hello'};
+			const contentObscured = handler.obscure(standardCleartext, options);
 			TestUtil.buffersEqual(content.hello, contentObscured);
 		});
 

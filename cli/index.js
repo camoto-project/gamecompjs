@@ -41,18 +41,18 @@ if (param == '--formats') {
 	GameCompression.listHandlers().forEach(handler => {
 		const md = handler.metadata();
 		console.log(`${md.id}: ${md.title}`);
-		if (md.params) Object.keys(md.params).forEach(p => {
-			console.log(`  * ${p}: ${md.params[p]}`);
+		if (md.options) Object.keys(md.options).forEach(p => {
+			console.log(`  * ${p}: ${md.options[p]}`);
 		});
 	});
 	process.exit(0);
 }
 
 // Parse any name=value parameters
-let params = {};
+let options = {};
 for (let i = 3; i < process.argv.length; i++) {
 	const [name, value] = process.argv[i].split('=');
-	params[name] = value;
+	options[name] = value;
 }
 
 let obscure;
@@ -79,9 +79,9 @@ if (!handler) {
 const content = fs.readFileSync(0, null);
 let outBuffer;
 if (obscure) {
-	outBuffer = handler.obscure(content, params);
+	outBuffer = handler.obscure(content, options);
 } else {
-	outBuffer = handler.reveal(content, params);
+	outBuffer = handler.reveal(content, options);
 }
 
 process.stdout.write(outBuffer);
