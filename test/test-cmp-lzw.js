@@ -114,10 +114,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(6);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9); // A => 256 [A]
-				bs.writeBits(66, 9); // B => 257 [AB]
-				bs.writeBits(67, 9); // C => 258 [BC]
-				bs.writeBits(68, 9); // D => 259 [CD]
+				bs.writeBits(65, 9);  // A => 256 [A]
+				bs.writeBits(66, 9);  // B => 257 [AB]
+				bs.writeBits(67, 9);  // C => 258 [BC]
+				bs.writeBits(68, 9);  // D => 259 [CD]
 				bs.writeBits(260, 9); // Own codeword
 				const expected = ['A', 'B', 'C', 'D', 'DD'];
 
@@ -129,9 +129,9 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(6);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9); // A => 256 [A]
-				bs.writeBits(66, 9); // B => 257 [AB]
-				bs.writeBits(67, 9); // C => 258 [BC]
+				bs.writeBits(65, 9);  // A => 256 [A]
+				bs.writeBits(66, 9);  // B => 257 [AB]
+				bs.writeBits(67, 9);  // C => 258 [BC]
 				bs.writeBits(258, 9); // BC => 259 [BC,B]
 				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
 				const expected = ['A', 'B', 'C', 'BC', 'BCB'];
@@ -144,8 +144,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(6);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9); // A => 256 [A]
-				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(65, 9);  // A => 256 [A]
+				bs.writeBits(66, 9);  // B => 257 [AB]
 				bs.writeBits(257, 9); // AB => 258 [B,A]
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
@@ -159,8 +159,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(7);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9); // A => 256 [A]
-				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(65, 9);  // A => 256 [A]
+				bs.writeBits(66, 9);  // B => 257 [AB]
 				bs.writeBits(257, 9); // AB => 258 [B,A]
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
