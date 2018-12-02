@@ -48,13 +48,6 @@ if (param == '--formats') {
 	process.exit(0);
 }
 
-// Parse any name=value parameters
-let options = {};
-for (let i = 3; i < process.argv.length; i++) {
-	const [name, value] = process.argv[i].split('=');
-	options[name] = value;
-}
-
 let obscure;
 switch (param[0]) {
 	case '+':
@@ -74,6 +67,18 @@ let handler = GameCompression.getHandler(id);
 if (!handler) {
 	console.error('Invalid format code:', id);
 	process.exit(2);
+}
+
+const md = handler.metadata();
+// Parse any name=value parameters
+let options = {};
+for (let i = 3; i < process.argv.length; i++) {
+	const [name, value] = process.argv[i].split('=');
+	if (!md.options[name]) {
+		console.error(`Unknown option: ${name}`);
+		process.exit(1);
+	}
+	options[name] = value;
 }
 
 const content = fs.readFileSync(0, null);
