@@ -28,7 +28,14 @@ const Debug = require('../util/utl-debug.js');
 const FORMAT_ID = 'cmp-lzw';
 
 function parseBool(s) {
-	return s ? ((s.toLowerCase && (s.toLowerCase() === 'true')) || !!s) : false;
+	if (s === undefined) {
+		return false;
+	} else if (s === true || s === false) {
+		return s;
+	} else if (s.toLowerCase) {
+		return s.toLowerCase() === 'true';
+	}
+	return !!s;
 }
 
 // Extract dictionary entry i as an array of bytes
