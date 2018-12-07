@@ -28,7 +28,6 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	let content = {};
 	before('load test data from local filesystem', function() {
-		content.default = testutil.loadData('default.bin');
 		content.seed4f = testutil.loadData('seed4f.bin');
 
 		content.default_v300 = testutil.loadData('default-v300.bin');
