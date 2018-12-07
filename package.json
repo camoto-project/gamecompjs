@@ -34,8 +34,8 @@
     "mocha-eslint": "^4.1.0"
   },
   "dependencies": {
-    "@malvineous/record-io-buffer": "^2.1.1",
-    "bit-buffer": "^0.2.3"
+    "@malvineous/record-io-buffer": "^2.2.0",
+    "bit-buffer": "^0.2.4"
   },
   "directories": {
     "test": "test"

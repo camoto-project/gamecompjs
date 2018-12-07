@@ -41,19 +41,18 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	let content = {};
 	let presets = {
-		/*
 		epfs: {
 			title: 'Lion King',
 			options: {
 				initialBits: 9,
 				maxBits: 14,
 				cwEOF: -1,    // max codeword
-				cwReset: -2, // max-1
+				cwDictReset: -2,  // max-1
 				cwFirst: 256,
 				bigEndian: true,
+				flushOnReset: false,
 			}
 		},
-		*/
 		mbash: {
 			title: 'Monster Bash',
 			options: {
@@ -62,6 +61,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				//cwEOF: 256,
 				cwFirst: 257,
 				bigEndian: false,
+				flushOnReset: false,
 			}
 		},
 		/*
@@ -71,9 +71,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				initialBits: 9,
 				maxBits: 9,
 				cwEOF: 257,
-				cwReset: 256,
+				cwDictReset: 256,
 				cwFirst: 258,
 				bigEndian: false,
+				flushOnReset: false,
 			}
 		},
 		stellar7: {
@@ -82,7 +83,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				initialBits: 9,
 				maxBits: 12,
 				cwEOF: undefined,
-				cwReset: 256,
+				cwDictReset: 256,
 				cwFirst: 257,
 				bigEndian: false,
 				flushOnReset: true,
@@ -93,6 +94,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	before('load test data from local filesystem', function() {
 		content.default = testutil.loadData('default.bin');
 		content.mbash = testutil.loadData('mbash.bin');
+		content.epfs = testutil.loadData('lionking.bin');
 	});
 
 	describe('reveal()', function() {
@@ -273,25 +275,28 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		Object.keys(presets).forEach(id => {
 			const p = presets[id];
 
-			// Only the default settings are covered by the default tests, so run this
-			// one again with different options.
-			it(`works with ${p.title} settings`, function() {
-				const contentObscured = handler.obscure(standardCleartext, p.options);
-				const contentRevealed = handler.reveal(contentObscured, p.options);
-				TestUtil.buffersEqual(standardCleartext, contentRevealed);
+			describe(`with ${p.title} settings`, function() {
+
+				// Only the default settings are covered by the default tests, so run this
+				// one again with different options.
+				it(`standard content`, function() {
+					const contentObscured = handler.obscure(standardCleartext, p.options);
+					const contentRevealed = handler.reveal(contentObscured, p.options);
+					TestUtil.buffersEqual(standardCleartext, contentRevealed);
+				});
+
+				it(`enough data to hit dictionary limit`, function() {
+					let u8input = new Uint8Array(7168);
+					for (let i = 0; i < u8input.length; i++) {
+						u8input[i] = ((i*5) & 0xFF) ^ (i >> 5);
+					}
+
+					const contentObscured = handler.obscure(u8input, p.options);
+					const contentRevealed = handler.reveal(contentObscured, p.options);
+					TestUtil.buffersEqual(u8input, contentRevealed);
+				});
+
 			});
-
-			it(`enough data to hit dictionary limit`, function() {
-				let u8input = new Uint8Array(7168);
-				for (let i = 0; i < u8input.length; i++) {
-					u8input[i] = ((i*5) & 0xFF) ^ (i >> 5);
-				}
-
-				const contentObscured = handler.obscure(u8input, presets.mbash.options);
-				const contentRevealed = handler.reveal(contentObscured, presets.mbash.options);
-				TestUtil.buffersEqual(u8input, contentRevealed);
-			});
-
 		});
 	});
 });

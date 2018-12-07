@@ -41,6 +41,14 @@ module.exports = class Debug {
 		if (!state.mute) console.debug(state.renderedPrefix, ...params);
 	}
 
+	static backtrace(...params) {
+		console.trace(state.renderedPrefix, ...params);
+	}
+
+	static warn(...params) {
+		console.warn(state.renderedPrefix, ...params);
+	}
+
 	static mute(m) {
 		state.mute = m;
 	}
