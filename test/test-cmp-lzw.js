@@ -58,7 +58,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			options: {
 				initialBits: 9,
 				maxBits: 12,
-				//cwEOF: 256,
+				cwEOF: undefined,//256?
+				cwDictReset: undefined,//256?
 				cwFirst: 257,
 				bigEndian: false,
 				flushOnReset: false,
