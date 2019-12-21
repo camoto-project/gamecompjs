@@ -29,9 +29,9 @@
   },
   "homepage": "https://github.com/Malvineous/gamecompjs#readme",
   "devDependencies": {
-    "eslint": "^5.9.0",
-    "mocha": "^5.2.0",
-    "mocha-eslint": "^4.1.0"
+    "eslint": "^6.8.0",
+    "mocha": "^6.2.2",
+    "mocha-eslint": "^6.0.0"
   },
   "dependencies": {
     "@malvineous/record-io-buffer": "^2.2.0",
