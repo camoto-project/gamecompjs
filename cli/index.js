@@ -1,7 +1,7 @@
 /**
  * @file Command line interface to the library.
  *
- * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2018-2020 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,17 +19,11 @@
 
 const fs = require('fs');
 const GameCompression = require('../index.js');
-const Debug = require('../util/utl-debug.js');
-
-if (process.argv[2] == '--debug') {
-	Debug.mute(false);
-	process.argv.shift();
-}
 
 const param = process.argv[2];
 
 if (['-h', '--help', '-?', '?', undefined].some(v => param == v)) {
-	console.log('gamecomp --formats | [--debug] (+|-)format [opt=val [opt=val ...]]\n');
+	console.log('gamecomp --formats | (+|-)format [opt=val [opt=val ...]]\n');
 	console.log('gamecomp --formats    // List algorithms and their options');
 	console.log('gamecomp +example     // Compress/encrypt with "example" algorithm');
 	console.log('gamecomp -example     // Decompress/decrypt with "example"');

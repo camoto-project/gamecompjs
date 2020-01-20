@@ -20,12 +20,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+const FORMAT_ID = 'cmp-lzw';
+
 const { BitStream, BitView } = require('bit-buffer');
 const { RecordBuffer, RecordType } = require('@malvineous/record-io-buffer');
-const Debug = require('../util/utl-debug.js');
-//Debug.mute(false);
-
-const FORMAT_ID = 'cmp-lzw';
+const debug = require('debug')('gamecomp:' + FORMAT_ID);
+const g_debug = debug;
 
 function parseBool(s) {
 	if (s === undefined) {
@@ -43,7 +43,7 @@ function dictEntry(dict, i) {
 	let s = [];
 	do {
 		if (!dict[i]) {
-			Debug.backtrace(`Tried to retrieve undefined dict[${i}]`);
+			debug(`Tried to retrieve undefined dict[${i}]`);
 			break;
 		}
 		s.unshift(dict[i].ch);
@@ -79,180 +79,370 @@ module.exports = class Compress_LZW
 
 	static reveal(content, options = {})
 	{
-		try {
-			const md = this.metadata();
-			Debug.push(md.id, 'reveal');
+		const debug = g_debug.extend('reveal');
+		const md = this.metadata();
 
-			options.initialBits = parseInt(options.initialBits || 9);
-			options.maxBits = parseInt(options.maxBits || 14);
-			options.cwFirst = parseInt(options.cwFirst || 256);
-			if (options.cwEOF !== undefined) {
-				options.cwEOF = parseInt(options.cwEOF);
+		options.initialBits = parseInt(options.initialBits || 9);
+		options.maxBits = parseInt(options.maxBits || 14);
+		options.cwFirst = parseInt(options.cwFirst || 256);
+		if (options.cwEOF !== undefined) {
+			options.cwEOF = parseInt(options.cwEOF);
+		}
+		if (options.cwDictReset !== undefined) {
+			options.cwDictReset = parseInt(options.cwDictReset);
+		}
+		options.bigEndian = parseBool(options.bigEndian);
+		options.resetDictWhenFull = parseBool(options.resetDictWhenFull);
+		options.resetCodewordLen = parseBool(options.resetCodewordLen);
+		options.flushOnReset = parseBool(options.flushOnReset);
+		options.finalSize = parseInt(options.finalSize || 512 * 1024);
+
+		let output = new RecordBuffer(options.finalSize);
+
+		let bs = new BitStream(
+			new BitView(content.buffer, content.byteOffset, content.byteLength)
+		);
+		bs.bigEndian = options.bigEndian;
+
+		let dict, dictIsClean;
+		function resetDict() {
+			dict = [];
+			for (let i = 0; i < options.cwFirst; i++) {
+				dict[i] = {
+					ch: i < 256 ? i : 0,
+					ptr: null,
+					//full: [i],
+				};
 			}
-			if (options.cwDictReset !== undefined) {
-				options.cwDictReset = parseInt(options.cwDictReset);
+			dictIsClean = true;
 			}
-			options.bigEndian = parseBool(options.bigEndian);
-			options.resetDictWhenFull = parseBool(options.resetDictWhenFull);
-			options.resetCodewordLen = parseBool(options.resetCodewordLen);
-			options.flushOnReset = parseBool(options.flushOnReset);
-			options.finalSize = parseInt(options.finalSize || 512 * 1024);
+		resetDict();
 
-			let output = new RecordBuffer(options.finalSize);
+		let lenCodeword = options.initialBits;
+		let cwPrev = null;
+		let offCW = 0;
 
-			let bs = new BitStream(
-				new BitView(content.buffer, content.byteOffset, content.byteLength)
-			);
-			bs.bigEndian = options.bigEndian;
+		let nextDictCode, lastDictCode, cwEOF, cwDictReset;
+		function recalcCodewords() {
+			nextDictCode = 1 << lenCodeword;
+			lastDictCode = nextDictCode - 1;
 
-			let dict, dictIsClean;
-			function resetDict() {
-				dict = [];
-				for (let i = 0; i < options.cwFirst; i++) {
-					dict[i] = {
-						ch: i < 256 ? i : 0,
-						ptr: null,
-						//full: [i],
-					};
-				}
-				dictIsClean = true;
+			cwEOF = options.cwEOF;
+			if (cwEOF < 0) {
+				// The code option is negative, with -1 being the last valid code.
+				// This means we have one less code to work with, so the codeword
+				// length will increase one dictionary entry sooner.
+				cwEOF += nextDictCode;
+				lastDictCode = Math.min(cwEOF - 1, lastDictCode);
 			}
-			resetDict();
 
-			let lenCodeword = options.initialBits;
-			let cwPrev = null;
-			let offCW = 0;
-
-			let nextDictCode, lastDictCode, cwEOF, cwDictReset;
-			function recalcCodewords() {
-				nextDictCode = 1 << lenCodeword;
-				lastDictCode = nextDictCode - 1;
-
-				cwEOF = options.cwEOF;
-				if (cwEOF < 0) {
-					// The code option is negative, with -1 being the last valid code.
-					// This means we have one less code to work with, so the codeword
-					// length will increase one dictionary entry sooner.
-					cwEOF += nextDictCode;
-					lastDictCode = Math.min(cwEOF - 1, lastDictCode);
-				}
-
-				cwDictReset = options.cwDictReset;
-				if (cwDictReset <= 0) {
-					// The code option is negative, with -1 being the last valid code.
-					// This means we have one less code to work with, so the codeword
-					// length will increase one dictionary entry sooner.
-					cwDictReset += nextDictCode;
-					lastDictCode = Math.min(cwDictReset - 1, lastDictCode);
-				}
-
-				Debug.log(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
-					+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
+			cwDictReset = options.cwDictReset;
+			if (cwDictReset <= 0) {
+				// The code option is negative, with -1 being the last valid code.
+				// This means we have one less code to work with, so the codeword
+				// length will increase one dictionary entry sooner.
+				cwDictReset += nextDictCode;
+				lastDictCode = Math.min(cwDictReset - 1, lastDictCode);
 			}
-			recalcCodewords();
 
-			while (bs.bitsLeft >= lenCodeword) {
+			debug(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
+				+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
+		}
+		recalcCodewords();
 
-				let cw;
-				try {
-					cw = bs.readBits(lenCodeword, false);
-					Debug.log(`@0x${bs.byteIndex.toString(16)} -> CW#${offCW}: end of `
-						+ `next codeword ${cw}`);
-				} catch (e) {
-					console.error(e);
-					break;
+		while (bs.bitsLeft >= lenCodeword) {
+
+			let cw;
+			try {
+				cw = bs.readBits(lenCodeword, false);
+				debug(`@0x${bs.byteIndex.toString(16)} -> CW#${offCW}: end of `
+					+ `next codeword ${cw}`);
+			} catch (e) {
+				console.error(e);
+				break;
+			}
+			if (cw === cwEOF) {
+				debug('Received EOF codeword');
+				break;
+			}
+			if (cw === cwDictReset) {
+				debug('Received dictionary reset codeword');
+				resetDict();
+				if (options.flushOnReset) {
+					// TODO flush byte
 				}
-				if (cw === cwEOF) {
-					Debug.log('Received EOF codeword');
-					break;
+				if (options.resetCodewordLen) {
+					lenCodeword = options.initialBits;
+					recalcCodewords();
 				}
-				if (cw === cwDictReset) {
-					Debug.log('Received dictionary reset codeword');
-					resetDict();
-					if (options.flushOnReset) {
-						// TODO flush byte
-					}
-					if (options.resetCodewordLen) {
-						lenCodeword = options.initialBits;
-						recalcCodewords();
-					}
-					continue;
-				}
+				continue;
+			}
 
-				let dictVal;
-				if (dict[cw] !== undefined) {
-					dictVal = dictEntry(dict, cw);
-				} else {
-					// Codeword isn't in the dictionary, act as if we got the previous
-					// codeword again.
-					Debug.log(`CW ${cw} isn't in dict, using prev CW ${cwPrev}`);
-					if (dict[cwPrev] !== undefined) {
-						dictVal = dictEntry(dict, cwPrev);
-						// Append the first char onto the end of the dictionary string.  This
-						// is what happens when we add it to the dictionary below, so it's
-						// like we are writing out the dictionary value for this codeword
-						// just before it has made it into the dictionary.
-						if (dict.length <= lastDictCode) { // unless the dict is full
-							dictVal.push(dictVal[0]);
-						}
-					} else {
-						console.error(`Previous codeword ${cwPrev} isn't in the dictionary!  Aborting.`);
-						break;
-					}
-				}
-
-				// Write out the value from the dictionary
-				output.put(dictVal);
-
-				if (dictIsClean) {
-					// The first codeword after a dictionary reset is used for the next
-					// dictionary entry, but not added to the dictionary on its own.  It
-					// is, however, output as-is.
-					dictIsClean = false;
-				} else {
-					// The new dictionary entry is the previous codeword plus the first
-					// character we just wrote.
+			let dictVal;
+			if (dict[cw] !== undefined) {
+				dictVal = dictEntry(dict, cw);
+			} else {
+				// Codeword isn't in the dictionary, act as if we got the previous
+				// codeword again.
+				debug(`CW ${cw} isn't in dict, using prev CW ${cwPrev}`);
+				if (dict[cwPrev] !== undefined) {
+					dictVal = dictEntry(dict, cwPrev);
+					// Append the first char onto the end of the dictionary string.  This
+					// is what happens when we add it to the dictionary below, so it's
+					// like we are writing out the dictionary value for this codeword
+					// just before it has made it into the dictionary.
 					if (dict.length <= lastDictCode) { // unless the dict is full
-						dict.push({
-							ptr: cwPrev,
-							ch: dictVal[0],
-							//full: [...(dict[cwPrev] && dict[cwPrev].full || []), dictVal[0]],
-						});
+						dictVal.push(dictVal[0]);
+					}
+				} else {
+					console.error(`Previous codeword ${cwPrev} isn't in the dictionary!  Aborting.`);
+					break;
+				}
+			}
+
+			// Write out the value from the dictionary
+			output.put(dictVal);
+
+			if (dictIsClean) {
+				// The first codeword after a dictionary reset is used for the next
+				// dictionary entry, but not added to the dictionary on its own.  It
+				// is, however, output as-is.
+				dictIsClean = false;
+			} else {
+				// The new dictionary entry is the previous codeword plus the first
+				// character we just wrote.
+				if (dict.length <= lastDictCode) { // unless the dict is full
+					dict.push({
+						ptr: cwPrev,
+						ch: dictVal[0],
+						//full: [...(dict[cwPrev] && dict[cwPrev].full || []), dictVal[0]],
+					});
+				}
+			}
+
+			if (debug.enabled) {
+				const sdest = dictEntry(dict, dict.length-1);
+				const str = RecordType.string.fromArray(sdest)
+					// eslint-disable-next-line no-control-regex
+					.replace(/\u0000/g, '\u2400'); // make nulls visible
+
+				const cwdest = dictVal;
+				const cwstr = RecordType.string.fromArray(cwdest)
+					// eslint-disable-next-line no-control-regex
+					.replace(/\u0000/g, '\u2400'); // make nulls visible
+
+				debug(`CW#${offCW} -> @0x${output.getPos().toString(16)} `
+					+ `CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
+				offCW++;
+			}
+
+			// This may put an invalid codeword into the dictionary, perhaps we
+			// should skip this step if 'cw' is invalid?
+			cwPrev = cw;
+
+			// Do this last so the codeword gets increased before we check how many
+			// bits are still left to read.
+			if (dict.length > lastDictCode) {
+				// Time to extend bitwidth
+				debug('Codeword reached maximum width at', lenCodeword,
+					'bits, now at', dict.length, 'of', lastDictCode);
+				if (lenCodeword < options.maxBits) {
+					lenCodeword++;
+				} else {
+					// Reached maximum codeword length
+					if (options.resetDictWhenFull) {
+						debug('Emptying dictionary');
+						resetDict();
+						if (options.resetCodewordLen) {
+							lenCodeword = options.initialBits;
+						}
 					}
 				}
+				recalcCodewords();
+			}
+		}
 
-				if (Debug.enabled) {
-					const sdest = dictEntry(dict, dict.length-1);
-					const str = RecordType.string.fromArray(sdest)
-						// eslint-disable-next-line no-control-regex
-						.replace(/\u0000/g, '\u2400'); // make nulls visible
+		return output.getU8();
+	}
 
-					const cwdest = dictVal;
-					const cwstr = RecordType.string.fromArray(cwdest)
-						// eslint-disable-next-line no-control-regex
-						.replace(/\u0000/g, '\u2400'); // make nulls visible
+	static obscure(content, options = {}) {
+		const debug = g_debug.extend('obscure');
+		const md = this.metadata();
 
-					Debug.log(`CW#${offCW} -> @0x${output.getPos().toString(16)} `
-						+ `CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
-					offCW++;
+		options.initialBits = parseInt(options.initialBits || 9);
+		options.maxBits = parseInt(options.maxBits || 14);
+		options.cwFirst = parseInt(options.cwFirst || 256);
+		if (options.cwEOF !== undefined) {
+			options.cwEOF = parseInt(options.cwEOF);
+		}
+		if (options.cwDictReset !== undefined) {
+			options.cwDictReset = parseInt(options.cwDictReset);
+		}
+		options.bigEndian = parseBool(options.bigEndian);
+		options.resetDictWhenFull = parseBool(options.resetDictWhenFull);
+		options.resetCodewordLen = parseBool(options.resetCodewordLen);
+		options.flushOnReset = parseBool(options.flushOnReset);
+		options.finalSize = parseInt(options.finalSize || 512 * 1024);
+
+		let buffer = new ArrayBuffer(content.length * 2);
+		let bs = new BitStream(buffer);
+		bs.bigEndian = options.bigEndian;
+
+		let dict, dictIsClean;
+		function resetDict() {
+			dict = [];
+			for (let i = 0; i < options.cwFirst; i++) {
+				dict[i] = {
+					ch: i < 256 ? i : 0,
+					ptr: null,
+					//full: [i],
+				};
+			}
+			dictIsClean = true;
+		}
+		resetDict();
+
+		let idxPending = null;
+		let lenCodeword = options.initialBits;
+		let cwPrev = null;
+
+		let nextDictCode, lastDictCode, cwEOF, cwDictReset;
+		function recalcCodewords() {
+			nextDictCode = 1 << lenCodeword;
+			lastDictCode = nextDictCode - 1;
+			cwEOF = options.cwEOF;
+			if (cwEOF < 0) {
+				cwEOF += nextDictCode;
+				lastDictCode = Math.min(cwEOF - 1, lastDictCode);
+			}
+
+			cwDictReset = options.cwDictReset;
+			if (cwDictReset <= 0) {
+				cwDictReset += nextDictCode;
+				lastDictCode = Math.min(cwDictReset - 1, lastDictCode);
+			}
+			debug(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
+				+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
+		}
+		recalcCodewords();
+
+		let offCW = -1; // offset of codeword, in number of codewords from start
+		for (let t of content) {
+			offCW++;
+			debug(`@${offCW}->0x${bs.byteIndex.toString(16)} Next char `
+				+ `${String.fromCharCode(t)}`);
+
+			// Find t in the dictionary
+			let inDict = false;
+			for (let i = 0; i < dict.length; i++) {
+				// Skip over reserved codes, even though they appear to be added to
+				// the dictionary normally.
+				if (i === options.cwEOF) continue;
+				if (i === options.cwDictReset) continue;
+
+				const d = dict[i];
+
+				if ((d.ch === t) && (d.ptr === idxPending)) {
+					idxPending = i;
+					inDict = true;
+
+					if (debug.enabled) {
+						let pendingStr = '';
+						if (idxPending !== null) {
+							const ps = dictEntry(dict, idxPending);
+							pendingStr = RecordType.string.fromArray(ps);
+						}
+						debug(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending `
+							+ `[${pendingStr}] + ${t} [${String.fromCharCode(t)}] in dict `
+							+ `as #${idxPending} -> new pending`);
+					}
+					// 'continue;' here?
+					break;
+				}
+			}
+			if (idxPending === null) {
+				debug('Unable to find codeword', t, 'in dict', dict);
+				break;
+			}
+			if (!inDict) {
+				// This previous codeword (at idxPending) was in the dictionary, but
+				// that followed by the current byte is not in the dictionary.  So we
+				// will write out the previous codeword and then start again.
+				try {
+					// But first we check to see whether the letter happens to be the
+					// same as the first one in the dictionary entry, because if it is,
+					// we can use a trick and write out the codeword for the next
+					// dictionary entry before we have created it.
+
+					const dictVal = dictEntry(dict, idxPending);
+					if ((idxPending === cwPrev) && (t == dictVal[0])) {
+						if (debug.enabled) {
+							let pendingStr = '';
+							if (idxPending !== null) {
+								const ps = dictEntry(dict, idxPending);
+								pendingStr = RecordType.string.fromArray(ps);
+							}
+
+							debug(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending `
+								+ `[${pendingStr}] + ${t} [${String.fromCharCode(t)}] matches `
+								+ `prev code + prevcode[0], using self-referencing codeword `
+								+ `#${dict.length}`);
+						}
+						idxPending = dict.length;
+						t = null;
+					}
+
+					if (dictIsClean) {
+						// The first codeword after a dictionary reset is used for the
+						// next dictionary entry, but not added to the dictionary on its
+						// own.  It is, however, output as-is.
+						dictIsClean = false;
+					} else {
+						// The new dictionary entry is the previous codeword plus the
+						// first character we just wrote.
+						if (dict.length <= lastDictCode) { // unless the dict is full
+							dict.push({
+								ptr: cwPrev,
+								ch: dictVal[0],
+							});
+						}
+					}
+
+					bs.writeBits(idxPending, lenCodeword);
+					cwPrev = idxPending;
+
+					if (debug.enabled) {
+						const sdest = dictEntry(dict, dict.length-1);
+						const str = RecordType.string.fromArray(sdest);
+
+						let pendingStr = '';
+						if (idxPending !== null) {
+							const ps = dictEntry(dict, idxPending);
+							pendingStr = RecordType.string.fromArray(ps);
+						}
+
+						debug(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending `
+							+ `[${pendingStr}] + ${t} [${String.fromCharCode(t)}] not in `
+							+ `dict, writing pending as codeword ${idxPending} => new dict `
+							+ `#${dict.length-1} <- ${idxPending} [${str}]`);
+					}
+				} catch (e) {
+					debug('Bitstream error, ending early:', e);
+					idxPending = null;
+					break;
 				}
 
-				// This may put an invalid codeword into the dictionary, perhaps we
-				// should skip this step if 'cw' is invalid?
-				cwPrev = cw;
-
-				// Do this last so the codeword gets increased before we check how many
-				// bits are still left to read.
 				if (dict.length > lastDictCode) {
 					// Time to extend bitwidth
-					Debug.log('Codeword reached maximum width at', lenCodeword,
-						'bits, now at', dict.length, 'of', lastDictCode);
+					debug(`Codeword reached max val at width=${lenCodeword}, dict `
+						+ `now at ${dict.length} of ${lastDictCode}`);
 					if (lenCodeword < options.maxBits) {
 						lenCodeword++;
+						lastDictCode = (1 << lenCodeword) - 1;
 					} else {
 						// Reached maximum codeword length
 						if (options.resetDictWhenFull) {
-							Debug.log('Emptying dictionary');
+							debug('Emptying dictionary');
 							resetDict();
 							if (options.resetCodewordLen) {
 								lenCodeword = options.initialBits;
@@ -261,232 +451,32 @@ module.exports = class Compress_LZW
 					}
 					recalcCodewords();
 				}
+
+				// We can cheat here because we know the first 256 dictionary entries
+				// are going to match the same character codes, so we can just use the
+				// value as-is without searching the dictionary again.
+				idxPending = t;
 			}
-
-			return output.getU8();
-
-		} finally {
-			Debug.pop();
 		}
-	}
-
-	static obscure(content, options = {}) {
-		try {
-			const md = this.metadata();
-			Debug.push(md.id, 'obscure');
-
-			options.initialBits = parseInt(options.initialBits || 9);
-			options.maxBits = parseInt(options.maxBits || 14);
-			options.cwFirst = parseInt(options.cwFirst || 256);
-			if (options.cwEOF !== undefined) {
-				options.cwEOF = parseInt(options.cwEOF);
+		if (idxPending) {
+			try {
+				bs.writeBits(idxPending, lenCodeword);
+			} catch (e) {
+				debug('Bitstream error at EOF, ignoring:', e);
 			}
-			if (options.cwDictReset !== undefined) {
-				options.cwDictReset = parseInt(options.cwDictReset);
-			}
-			options.bigEndian = parseBool(options.bigEndian);
-			options.resetDictWhenFull = parseBool(options.resetDictWhenFull);
-			options.resetCodewordLen = parseBool(options.resetCodewordLen);
-			options.flushOnReset = parseBool(options.flushOnReset);
-			options.finalSize = parseInt(options.finalSize || 512 * 1024);
-
-			let buffer = new ArrayBuffer(content.length * 2);
-			let bs = new BitStream(buffer);
-			bs.bigEndian = options.bigEndian;
-
-			let dict, dictIsClean;
-			function resetDict() {
-				dict = [];
-				for (let i = 0; i < options.cwFirst; i++) {
-					dict[i] = {
-						ch: i < 256 ? i : 0,
-						ptr: null,
-						//full: [i],
-					};
-				}
-				dictIsClean = true;
-			}
-			resetDict();
-
-			let idxPending = null;
-			let lenCodeword = options.initialBits;
-			let cwPrev = null;
-
-			let nextDictCode, lastDictCode, cwEOF, cwDictReset;
-			function recalcCodewords() {
-				nextDictCode = 1 << lenCodeword;
-				lastDictCode = nextDictCode - 1;
-				cwEOF = options.cwEOF;
-				if (cwEOF < 0) {
-					cwEOF += nextDictCode;
-					lastDictCode = Math.min(cwEOF - 1, lastDictCode);
-				}
-
-				cwDictReset = options.cwDictReset;
-				if (cwDictReset <= 0) {
-					cwDictReset += nextDictCode;
-					lastDictCode = Math.min(cwDictReset - 1, lastDictCode);
-				}
-				Debug.log(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
-					+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
-			}
-			recalcCodewords();
-
-			let offCW = -1; // offset of codeword, in number of codewords from start
-			for (let t of content) {
-				offCW++;
-				Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Next char `
-					+ `${String.fromCharCode(t)}`);
-
-				// Find t in the dictionary
-				let inDict = false;
-				for (let i = 0; i < dict.length; i++) {
-					// Skip over reserved codes, even though they appear to be added to
-					// the dictionary normally.
-					if (i === options.cwEOF) continue;
-					if (i === options.cwDictReset) continue;
-
-					const d = dict[i];
-
-					if ((d.ch === t) && (d.ptr === idxPending)) {
-						idxPending = i;
-						inDict = true;
-
-						if (Debug.enabled) {
-							let pendingStr = '';
-							if (idxPending !== null) {
-								const ps = dictEntry(dict, idxPending);
-								pendingStr = RecordType.string.fromArray(ps);
-							}
-							Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending `
-								+ `[${pendingStr}] + ${t} [${String.fromCharCode(t)}] in dict `
-								+ `as #${idxPending} -> new pending`);
-						}
-						// 'continue;' here?
-						break;
-					}
-				}
-				if (idxPending === null) {
-					Debug.log('Unable to find codeword', t, 'in dict', dict);
-					break;
-				}
-				if (!inDict) {
-					// This previous codeword (at idxPending) was in the dictionary, but
-					// that followed by the current byte is not in the dictionary.  So we
-					// will write out the previous codeword and then start again.
-					try {
-						// But first we check to see whether the letter happens to be the
-						// same as the first one in the dictionary entry, because if it is,
-						// we can use a trick and write out the codeword for the next
-						// dictionary entry before we have created it.
-
-						const dictVal = dictEntry(dict, idxPending);
-						if ((idxPending === cwPrev) && (t == dictVal[0])) {
-							if (Debug.enabled) {
-								let pendingStr = '';
-								if (idxPending !== null) {
-									const ps = dictEntry(dict, idxPending);
-									pendingStr = RecordType.string.fromArray(ps);
-								}
-
-								Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending `
-									+ `[${pendingStr}] + ${t} [${String.fromCharCode(t)}] matches `
-									+ `prev code + prevcode[0], using self-referencing codeword `
-									+ `#${dict.length}`);
-							}
-							idxPending = dict.length;
-							t = null;
-						}
-
-						if (dictIsClean) {
-							// The first codeword after a dictionary reset is used for the
-							// next dictionary entry, but not added to the dictionary on its
-							// own.  It is, however, output as-is.
-							dictIsClean = false;
-						} else {
-							// The new dictionary entry is the previous codeword plus the
-							// first character we just wrote.
-							if (dict.length <= lastDictCode) { // unless the dict is full
-								dict.push({
-									ptr: cwPrev,
-									ch: dictVal[0],
-								});
-							}
-						}
-
-						bs.writeBits(idxPending, lenCodeword);
-						cwPrev = idxPending;
-
-						if (Debug.enabled) {
-							const sdest = dictEntry(dict, dict.length-1);
-							const str = RecordType.string.fromArray(sdest);
-
-							let pendingStr = '';
-							if (idxPending !== null) {
-								const ps = dictEntry(dict, idxPending);
-								pendingStr = RecordType.string.fromArray(ps);
-							}
-
-							Debug.log(`@${offCW}->0x${bs.byteIndex.toString(16)} Pending `
-								+ `[${pendingStr}] + ${t} [${String.fromCharCode(t)}] not in `
-								+ `dict, writing pending as codeword ${idxPending} => new dict `
-								+ `#${dict.length-1} <- ${idxPending} [${str}]`);
-						}
-					} catch (e) {
-						Debug.log('Bitstream error, ending early:', e);
-						idxPending = null;
-						break;
-					}
-
-					if (dict.length > lastDictCode) {
-						// Time to extend bitwidth
-						Debug.log(`Codeword reached max val at width=${lenCodeword}, dict `
-							+ `now at ${dict.length} of ${lastDictCode}`);
-						if (lenCodeword < options.maxBits) {
-							lenCodeword++;
-							lastDictCode = (1 << lenCodeword) - 1;
-						} else {
-							// Reached maximum codeword length
-							if (options.resetDictWhenFull) {
-								Debug.log('Emptying dictionary');
-								resetDict();
-								if (options.resetCodewordLen) {
-									lenCodeword = options.initialBits;
-								}
-							}
-						}
-						recalcCodewords();
-					}
-
-					// We can cheat here because we know the first 256 dictionary entries
-					// are going to match the same character codes, so we can just use the
-					// value as-is without searching the dictionary again.
-					idxPending = t;
-				}
-			}
-			if (idxPending) {
-				try {
-					bs.writeBits(idxPending, lenCodeword);
-				} catch (e) {
-					Debug.log('Bitstream error at EOF, ignoring:', e);
-				}
-			}
-			if (options.cwEOF) {
-				try {
-					bs.writeBits(options.cwEOF, lenCodeword);
-				} catch (e) {
-					Debug.log('Bitstream error writing EOF codeword, ignoring:', e);
-				}
-			}
-
-			// Write zero bits until the next byte boundary.
-			const bitsLeft = (8 - (bs.index % 8)) % 8;
-			if (bitsLeft) bs.writeBits(0, bitsLeft);
-
-			return new Uint8Array(buffer, 0, bs.byteIndex);
-
-		} finally {
-			Debug.pop();
 		}
+		if (options.cwEOF) {
+			try {
+				bs.writeBits(options.cwEOF, lenCodeword);
+			} catch (e) {
+				debug('Bitstream error writing EOF codeword, ignoring:', e);
+			}
+		}
+
+		// Write zero bits until the next byte boundary.
+		const bitsLeft = (8 - (bs.index % 8)) % 8;
+		if (bitsLeft) bs.writeBits(0, bitsLeft);
+
+		return new Uint8Array(buffer, 0, bs.byteIndex);
 	}
 };

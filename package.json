@@ -35,7 +35,8 @@
   },
   "dependencies": {
     "@malvineous/record-io-buffer": "^2.2.0",
-    "bit-buffer": "^0.2.4"
+    "bit-buffer": "^0.2.4",
+    "debug": "^4.1.1"
   },
   "directories": {
     "test": "test"
