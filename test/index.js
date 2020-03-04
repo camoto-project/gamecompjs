@@ -57,23 +57,25 @@ GameCompression.listHandlers().forEach(handler => {
 			});
 		});
 
-		describe('obscure() with default options', function() {
-			it('should obscure standard data correctly', function() {
-				// Copy buffer to ensure no changes
-				let contentInput = Uint8Array.from(content.cleartext);
-				const contentObscured = handler.obscure(contentInput);
-				TestUtil.buffersEqual(content.default, contentObscured);
-				TestUtil.buffersEqual(content.cleartext, contentInput, 'Input buffer was changed during obscure');
+		if (handler.obscure) {
+			describe('obscure() with default options', function() {
+				it('should obscure standard data correctly', function() {
+					// Copy buffer to ensure no changes
+					let contentInput = Uint8Array.from(content.cleartext);
+					const contentObscured = handler.obscure(contentInput);
+					TestUtil.buffersEqual(content.default, contentObscured);
+					TestUtil.buffersEqual(content.cleartext, contentInput, 'Input buffer was changed during obscure');
+				});
 			});
-		});
 
-		describe('obscure() then reveal() with default options', function() {
-			it(`should be able to undo own transformation on standard data`, function() {
-				let contentInput = Uint8Array.from(content.cleartext);
-				const contentObscured = handler.obscure(contentInput);
-				const contentRevealed = handler.reveal(contentObscured);
-				TestUtil.buffersEqual(content.cleartext, contentRevealed);
+			describe('obscure() then reveal() with default options', function() {
+				it(`should be able to undo own transformation on standard data`, function() {
+					let contentInput = Uint8Array.from(content.cleartext);
+					const contentObscured = handler.obscure(contentInput);
+					const contentRevealed = handler.reveal(contentObscured);
+					TestUtil.buffersEqual(content.cleartext, contentRevealed);
+				});
 			});
-		});
+		}
 	});
 });
