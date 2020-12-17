@@ -20,6 +20,7 @@
 const fileTypes = [
 	require('./compress/cmp-lzexe.js'),
 	require('./compress/cmp-lzw.js'),
+	require('./compress/cmp-lzss.js'),
 	require('./compress/cmp-rle-bash.js'),
 	require('./encrypt/enc-glb-raptor.js'),
 	require('./encrypt/enc-xor-blood.js'),
