@@ -44,8 +44,6 @@ module.exports = class Compress_RLE_MonsterBash
 	{
 		const debug = g_debug.extend('reveal');
 
-		const md = this.metadata();
-
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length * 1.2);
 
@@ -71,8 +69,6 @@ module.exports = class Compress_RLE_MonsterBash
 
 	static obscure(content) {
 		const debug = g_debug.extend('obscure');
-
-		const md = this.metadata();
 
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length * 1.2);

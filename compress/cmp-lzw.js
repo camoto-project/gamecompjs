@@ -80,7 +80,6 @@ module.exports = class Compress_LZW
 	static reveal(content, options = {})
 	{
 		const debug = g_debug.extend('reveal');
-		const md = this.metadata();
 
 		options.initialBits = parseInt(options.initialBits || 9);
 		options.maxBits = parseInt(options.maxBits || 14);
@@ -115,7 +114,7 @@ module.exports = class Compress_LZW
 				};
 			}
 			dictIsClean = true;
-			}
+		}
 		resetDict();
 
 		let lenCodeword = options.initialBits;
@@ -267,7 +266,6 @@ module.exports = class Compress_LZW
 
 	static obscure(content, options = {}) {
 		const debug = g_debug.extend('obscure');
-		const md = this.metadata();
 
 		options.initialBits = parseInt(options.initialBits || 9);
 		options.maxBits = parseInt(options.maxBits || 14);

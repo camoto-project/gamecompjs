@@ -63,7 +63,6 @@ module.exports = class Compress_LZSS {
 
 	static reveal(content, options = {}) {
 		const debug = g_debug.extend('reveal');
-		const md = this.metadata();
 
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
@@ -228,7 +227,6 @@ module.exports = class Compress_LZSS {
 		}
 
 		const debug = g_debug.extend('obscure');
-		const md = this.metadata();
 
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
