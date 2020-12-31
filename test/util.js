@@ -1,7 +1,7 @@
 /**
  * @file Test helper functions.
  *
- * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2018-2021 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,6 +69,25 @@ module.exports = class TestUtil {
 		return u8;
 	}
 
+	loadContent(handler, ids) {
+		let content = {};
+		ids.forEach(name => {
+			const pathFiles = path.resolve(__dirname, this.idHandler);
+			const files = fs.readdirSync(pathFiles);
+			const target = files.filter(f => f.startsWith(name + '.'));
+			assert.ok(target.length === 1, `Expected only one file: ${this.idHandler}/${name}.*`);
+			const mainFilename = path.join(this.idHandler, target[0]);
+			let input = {
+				main: this.loadData(path.resolve(__dirname, mainFilename)),
+			};
+			input.main.filename = mainFilename;
+
+			content[name] = input;
+		});
+
+		return content;
+	}
+
 	static buffersEqual(expected, actual, msg) {
 		if (expected instanceof ArrayBuffer) {
 			expected = new Uint8Array(expected);
@@ -94,7 +113,19 @@ module.exports = class TestUtil {
 		}
 	}
 
+	static contentEqual(contentExpected, contentActual) {
+		Object.keys(contentExpected).forEach(id => {
+			this.buffersEqual(contentExpected[id], contentActual[id]);
+		});
+	}
+
 	static u8FromString(s) {
 		return Uint8Array.from(s.split(''), s => s.charCodeAt(0));
+	}
+
+	static almostEqual(a, b, c = 0.001) {
+		if (Math.abs(a - b) > c) {
+			assert.equal(a, b);
+		}
 	}
 };

@@ -1,9 +1,6 @@
 /**
  * @file LZEXE .exe compression algorithm.
  *
- * This algorithm is fully documented on the ModdingWiki:
- *   http://www.shikadi.net/moddingwiki/LZW_Compression
- *
  * Copyright (C) 2018-2020 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,7 +19,6 @@
 
 const FORMAT_ID = 'cmp-lzexe';
 
-const { BitStream, BitView } = require('bit-buffer');
 const { RecordBuffer, RecordType } = require('@malvineous/record-io-buffer');
 const debug = require('debug')('gamecomp:' + FORMAT_ID);
 const g_debug = debug;
@@ -91,6 +87,42 @@ const sig91 = [
 	0x8C, 0xD8, 0x01, 0xD8, 0x8E, 0xD8, 0xE9, 0x72
 ];
 
+// The LZEXE available from Fabrice Bellard's website as of 2020 is still called
+// v0.91 but it produces a very slightly different decompressor, which other
+// UNLZEXE utilities can't read either.
+const sig91e = [
+	0x50,
+	0x06, 0x0E, 0x1F, 0x8B, 0x0E, 0x0C, 0x00, 0x8B,
+	0xF1, 0x4E, 0x89, 0xF7, 0x8C, 0xDB, 0x03, 0x1E,
+	0x0A, 0x00, 0x8E, 0xC3, 0xFD, 0xF3, 0xA4, 0x53,
+	0xB8, 0x2C, 0x00, 0x50, 0xCB, 0x2E, 0x8B, 0x2E,
+	0x08, 0x00, 0x8C, 0xDA, 0x89, 0xE8, 0x3D, 0x00,
+	0x10, 0x76, 0x03, 0xB8, 0x00, 0x10, 0x29, 0xC5,
+	0x29, 0xC2, 0x29, 0xC3, 0x8E, 0xDA, 0x8E, 0xC3,
+	0xB1, 0x03, 0xD3, 0xE0, 0x89, 0xC1, 0x48,
+	0xD1, 0xE0, 0x8B, 0xF0, 0x8B, 0xF8, 0xF3, 0xA5,
+	0x09, 0xED, 0x75, 0xD9, 0xFC, 0x8E, 0xC2, 0x8E,
+	0xDB, 0x31, 0xF6, 0x31, 0xFF, 0xBA, 0x10, 0x00,
+	0xAD, 0x89, 0xC5, 0xD1, 0xED, 0x4A, 0x75, 0x05,
+	0xAD, 0x89, 0xC5, 0xB2, 0x10, 0x73, 0x03, 0xA4,
+	0xEB, 0xF1, 0x31, 0xC9, 0xD1, 0xED, 0x4A, 0x75,
+	0x05, 0xAD, 0x89, 0xC5, 0xB2, 0x10, 0x72, 0x22,
+	0xD1, 0xED, 0x4A, 0x75, 0x05, 0xAD, 0x89, 0xC5,
+	0xB2, 0x10, 0xD1, 0xD1, 0xD1, 0xED, 0x4A, 0x75,
+	0x05, 0xAD, 0x89, 0xC5, 0xB2, 0x10, 0xD1, 0xD1,
+	0x41, 0x41, 0xAC, 0xB7, 0xFF, 0x8A, 0xD8, 0xE9,
+	0x13, 0x00, 0xAD, 0x8B, 0xD8, 0xB1, 0x03, 0xD2,
+	0xEF, 0x80, 0xCF, 0xE0, 0x80, 0xE4, 0x07, 0x74,
+	0x0C, 0x88, 0xE1, 0x41, 0x41, 0x26, 0x8A, 0x01,
+	0xAA, 0xE2, 0xFA, 0xEB, 0xA6, 0xAC, 0x08, 0xC0,
+	0x74, 0x34, 0x3C, 0x01, 0x74, 0x05, 0x88, 0xC1,
+	0x41, 0xEB, 0xEA, 0x89, 0xFB, 0x83, 0xE7, 0x0F,
+	0x81, 0xC7, 0x00, 0x20, 0xB1, 0x04, 0xD3, 0xEB,
+	0x8C, 0xC0, 0x01, 0xD8, 0x2D, 0x00, 0x02, 0x8E,
+	0xC0, 0x89, 0xF3, 0x83, 0xE6, 0x0F, 0xD3, 0xEB,
+	0x8C, 0xD8, 0x01, 0xD8, 0x8E, 0xD8, 0xE9, 0x72
+];
+
 /// For LZEXE ver 0.90
 function reloc90(inf, outf, offCS, ohead)
 {
@@ -102,7 +134,7 @@ function reloc90(inf, outf, offCS, ohead)
 	do {
 		let c = inf.read(RecordType.int.u16le);
 		for (; c > 0; c--) {
-			let rel_off = inf.read(RecordType.int.u16le.read);
+			let rel_off = inf.read(RecordType.int.u16le);
 			outf.write(RecordType.int.u16le, rel_off);
 			outf.write(RecordType.int.u16le, rel_seg);
 			rel_count++;
@@ -123,7 +155,7 @@ function reloc91(inf, outf, offCS, ohead)
 	let rel_seg = 0;
 	let rel_off = 0;
 	for (;;) {
-		let s = inf.read(RecordType.int.u8)
+		let s = inf.read(RecordType.int.u8);
 		let span = s;
 		if (span == 0) {
 			span = inf.read(RecordType.int.u16le);
@@ -170,7 +202,7 @@ function mkreltbl(inf, outf, ver, ihead, ohead, info)
 	switch (ver) {
 		case 90: reloc90(inf, outf, offCS, ohead); break;
 		case 91: reloc91(inf, outf, offCS, ohead); break;
-		default: throw("Unsupported LZEXE version.");
+		default: throw('Unsupported LZEXE version.');
 	}
 
 	// Get the length of the relocation table truncated to a signed 16-bit int
@@ -213,12 +245,77 @@ module.exports = class Compress_LZEXE
 		};
 	}
 
+	static identify(content) {
+		const debug = g_debug.extend('identify');
+
+		let inf = new RecordBuffer(content);
+		inf.seekAbs(0);
+		const sig0 = inf.read(RecordType.int.u16le);
+		inf.seekAbs(4 * 2);
+		const sig4 = inf.read(RecordType.int.u16le);
+		inf.seekAbs(0x0A * 2);
+		const sigA = inf.read(RecordType.int.u16le);
+		const sigB = inf.read(RecordType.int.u16le);
+		const sigC = inf.read(RecordType.int.u16le);
+		const sigD = inf.read(RecordType.int.u16le);
+
+		if (
+			(sig0 != 0x5a4d && sig0 != 0x4d5a)
+			|| sigD != 0
+			|| sigC != 0x1c
+		) {
+			return {
+				valid: false,
+				reason: 'Not compressed with LZEXE.',
+			};
+		}
+
+		const entry = ((sig4 + sigB) << 4) + sigA;
+		if (entry >= inf.length) {
+			return {
+				valid: false,
+				reason: 'Entry point is beyond end of file.',
+			};
+		}
+
+		const sigbuf = inf.getU8(entry, sig90.length);
+		if (
+			(sigbuf.length == sig90.length) &&
+			(sigbuf.every((el, i) => el == sig90[i]))
+		) {
+			return {
+				valid: true,
+				reason: 'Compressed with LZEXE 0.90.',
+			};
+		} else if (
+			(sigbuf.length == sig91.length) &&
+			(sigbuf.every((el, i) => el == sig91[i]))
+		) {
+			return {
+				valid: true,
+				reason: 'Compressed with LZEXE 0.91.',
+			};
+		} else if (
+			(sigbuf.length == sig91e.length) &&
+			(sigbuf.every((el, i) => el == sig91e[i]))
+		) {
+			return {
+				valid: true,
+				reason: 'Compressed with LZEXE 0.91e.',
+			};
+		}
+
+		return {
+			valid: false,
+			reason: 'Compressed with an unknown version of LZEXE.',
+		};
+	}
+
 	static reveal(content, options = {})
 	{
 		const debug = g_debug.extend('reveal');
-		const md = this.metadata();
 
-		let inf = new RecordBuffer(content.buffer);
+		let inf = new RecordBuffer(content);
 
 		let ihead = [], ohead = [];
 		inf.seekAbs(0);
@@ -237,33 +334,42 @@ module.exports = class Compress_LZEXE
 				'0x0D:', ihead[0x0d].toString(16),
 				'0x0C:', ihead[0x0c].toString(16)
 			);
-			throw new Error("Cannot decompress a non-LZEXE file.");
+			throw new Error('Cannot decompress a non-LZEXE file.');
 		}
 
 		let info = [];
 
 		const entry = ((ihead[4] + ihead[0x0b]) << 4) + ihead[0x0a];
 		if (entry >= inf.length) {
-			throw new Error("Unable to unlzexe - file has been truncated.");
+			throw new Error('Unable to unlzexe - file has been truncated.');
 		}
 
 		const sigbuf = inf.getU8(entry, sig90.length);
 
-		let ver;
+		debug(`entry=0x${entry.toString(16)}, len=${sigbuf.length}`);
+		let ver, vers;
 		if (
 			(sigbuf.length == sig90.length) &&
 			(sigbuf.every((el, i) => el == sig90[i]))
 		) {
 			ver = 90;
+			vers = '0.90';
 		} else if (
 			(sigbuf.length == sig91.length) &&
 			(sigbuf.every((el, i) => el == sig91[i]))
 		) {
 			ver = 91;
+			vers = '0.91';
+		} else if (
+			(sigbuf.length == sig91e.length) &&
+			(sigbuf.every((el, i) => el == sig91e[i]))
+		) {
+			ver = 91;
+			vers = '0.91e';
 		} else {
-			throw new Error("Unknown LZEXE version");
+			throw new Error('Unknown LZEXE version.');
 		}
-		debug(`unlzexe: file compressed by LZEXE v0.${ver}`);
+		debug(`compressed by LZEXE ${vers}`);
 
 		let outf = new RecordBuffer(new Uint8Array(options.finalSize));
 		mkreltbl(inf, outf, ver, ihead, ohead, info);
