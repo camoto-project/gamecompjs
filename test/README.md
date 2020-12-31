@@ -2,13 +2,13 @@
 
 You can run the tests through `npm`:
 
-  npm test
+  npm run -s test
 
 If a test fails but the data is correct (such as after fixing bugs or
 adding support for a new algorithm), the testdata can be updated by
 saving the failed data to a file:
 
-  SAVE_FAILED_TEST=1 npm test
+  SAVE_FAILED_TEST=1 npm run -s test
 
 This will save the failed test to `error.bin` which can be used to
 overwrite the old testdata file.

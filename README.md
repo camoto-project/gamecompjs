@@ -1,5 +1,5 @@
 # gamecomp.js
-Copyright 2018 Adam Nielsen <<malvineous@shikadi.net>>  
+Copyright 2018-2021 Adam Nielsen <<malvineous@shikadi.net>>  
 
 This is a Javascript library that can pass data through different algorithms
 used by MS-DOS games from the 1990s.  Typically this is used to compress and
@@ -65,7 +65,7 @@ Clone the repo, and to get started:
 
 Run the tests to make sure everything worked:
 
-    npm test
+    npm run -s test
 
 You're ready to go!  To add a new algorithm:
 
@@ -76,7 +76,15 @@ You're ready to go!  To add a new algorithm:
 
  3. Make a folder in `test/` for your new algorithm and populate it with
     files similar to the others.  The tests work by passing standard data to
-    each algorithm and comparing the result to what is inside this folder.
+    each algorithm and comparing the result to what is inside this folder.  Run
+    the tests just for your new algorithm (instead of all of them) by passing
+    the grep (`-g`) parameter to Mocha, the test framework.  This will run any
+    test matching the given string:
+    
+        npm run -s test -- -g cmp-myformat
+    
+    Your tests will fail until you have created the expected sample files in
+    the `tests/cmp-myformat/` folder.
     
     You can either create these files by hand, with another utility, or if you
     are confident that your code is correct, from the code itself.  This is done
@@ -84,12 +92,17 @@ You're ready to go!  To add a new algorithm:
     the data produced by your code to be saved to a temporary file in the
     current directory:
     
-        SAVE_FAILED_TEST=1 npm test
+        SAVE_FAILED_TEST=1 npm run -s test -- -g cmp-myformat
         mv error1.bin test/cmp-myformat/default.bin
 
-During development you can test your algorithm like this:
+During development you can examine the output of your algorithm like this:
 
-    $ ./bin/gamecomp --debug -cmp-myformat param=value < data.bin
+    # Decompress (remove algo/reveal data)
+    $ DEBUG='gamecomp:cmp-myformat*' ./bin/gamecomp -cmp-myformat param=value < compressed.bin > clear.test
 
-If you use `Debug.log` rather than `console.log` then these messages can be left
-in for future diagnosis as they will only appear when `--debug` is given.
+    # Compress (apply algo/obscure data)
+    $ DEBUG='gamecomp:cmp-myformat*' ./bin/gamecomp +cmp-myformat param=value < clear.bin > compressed.test
+
+If you use `debug()` rather than `console.log` then these messages can be left
+in for future diagnosis as they will only appear when the `DEBUG` environment
+variable is set appropriately.
