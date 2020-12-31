@@ -1,6 +1,6 @@
 {
   "name": "@malvineous/gamecomp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Apply and remove compression and encryption algorithms used by DOS games",
   "main": "index.js",
   "scripts": {
@@ -29,8 +29,8 @@
   },
   "homepage": "https://github.com/Malvineous/gamecompjs#readme",
   "devDependencies": {
-    "eslint": "^6.8.0",
-    "mocha": "^6.2.2",
+    "eslint": "^7.16.0",
+    "mocha": "^8.2.1",
     "mocha-eslint": "^6.0.0"
   },
   "dependencies": {
