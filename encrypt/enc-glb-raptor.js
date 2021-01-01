@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const { RecordType } = require('@malvineous/record-io-buffer');
+const { RecordType } = require('@camoto/record-io-buffer');
 
 const FORMAT_ID = 'enc-glb-raptor';
 

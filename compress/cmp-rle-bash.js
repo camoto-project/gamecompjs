@@ -22,7 +22,7 @@
 
 const FORMAT_ID = 'cmp-rle-bash';
 
-const { RecordBuffer, RecordType } = require('@malvineous/record-io-buffer');
+const { RecordBuffer, RecordType } = require('@camoto/record-io-buffer');
 const debug = require('debug')('gamecomp:' + FORMAT_ID);
 const g_debug = debug;
 

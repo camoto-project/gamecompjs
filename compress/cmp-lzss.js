@@ -28,7 +28,7 @@ const FORMAT_ID = 'cmp-lzss';
 const {
 	RecordBuffer,
 	RecordType
-} = require('@malvineous/record-io-buffer');
+} = require('@camoto/record-io-buffer');
 const debug = require('debug')('gamecomp:' + FORMAT_ID);
 const g_debug = debug;
 
