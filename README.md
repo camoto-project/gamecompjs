@@ -10,7 +10,7 @@ decompress game data, as well as encrypt and decrypt it too.
 If you wish to use the command-line `gamecomp` utility to work with the
 algorithms directly, you can install the library globally on your system:
 
-    npm install -g @malvineous/gamecomp
+    npm install -g @camoto/gamecomp
 
 ### Command line interface
 
@@ -37,11 +37,11 @@ to apply the algorithm (compress/encrypt) or a `-` to reverse it
 If you wish to make use of the library in your own project, install it
 in the usual way:
 
-    npm install @malvineous/gamecomp
+    npm install @camoto/gamecomp
 
 See `cli/index.js` for example use.  The quick start is:
 
-    const GameCompression = require('@malvineous/gamecomp');
+    const GameCompression = require('@camoto/gamecomp');
     
     // Decompress a file
     const cmpAlgo = GameCompression.getHandler('cmp-lzw');
