@@ -34,13 +34,13 @@ export default function cli() {
 	}
 
 	if (param == '--formats') {
-		GameCompression.listHandlers().forEach(handler => {
+		for (const handler of gamecompAll) {
 			const md = handler.metadata();
 			console.log(`${md.id}: ${md.title}`);
 			if (md.options) Object.keys(md.options).forEach(p => {
 				console.log(`  * ${p}: ${md.options[p]}`);
 			});
-		});
+		}
 		process.exit(0);
 	}
 
@@ -59,7 +59,7 @@ export default function cli() {
 
 	const id = param.substr(1);
 
-	let handler = GameCompression.getHandler(id);
+	let handler = gamecompAll.find(h => h.metadata().id === id);
 	if (!handler) {
 		console.error('Invalid format code:', id);
 		process.exit(2);
