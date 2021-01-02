@@ -17,11 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const TestUtil = require('./util.js');
-const standardCleartext = require('./gen-cleartext.js');
-const GameCompression = require('../index.js');
+import TestUtil from './util.js';
+import standardCleartext from './gen-cleartext.js';
+import { enc_xor_blood as handler } from '../index.js';
 
-const handler = GameCompression.getHandler('enc-xor-blood');
 const md = handler.metadata();
 let testutil = new TestUtil(md.id);
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {

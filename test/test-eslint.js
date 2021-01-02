@@ -1,4 +1,4 @@
-const lint = require('mocha-eslint');
+import lint from 'mocha-eslint';
 
 const paths = [
 	'cli',

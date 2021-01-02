@@ -17,12 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const assert = require('assert');
+import assert from 'assert';
+import TestUtil from './util.js';
+import { cmp_lzexe as handler } from '../index.js';
 
-const TestUtil = require('./util.js');
-const GameCompression = require('../index.js');
-
-const handler = GameCompression.getHandler('cmp-lzexe');
 const md = handler.metadata();
 let testutil = new TestUtil(md.id);
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {

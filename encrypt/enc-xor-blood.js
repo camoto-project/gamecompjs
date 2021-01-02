@@ -25,7 +25,7 @@ const FORMAT_ID = 'enc-xor-blood';
 // Number of bytes encrypted from start of file
 const RFF_FILE_CRYPT_LEN = 256;
 
-module.exports = class Encrypt_XOR_Blood
+export default class Encrypt_XOR_Blood
 {
 	static metadata() {
 		return {
@@ -59,5 +59,4 @@ module.exports = class Encrypt_XOR_Blood
 		// Symmetric algorithm
 		return this.reveal(content, options);
 	}
-
-};
+}

@@ -19,9 +19,9 @@
 
 const FORMAT_ID = 'cmp-lzexe';
 
-const { RecordBuffer, RecordType } = require('@camoto/record-io-buffer');
-const debug = require('debug')('gamecomp:' + FORMAT_ID);
-const g_debug = debug;
+import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
+import Debug from '../util/utl-debug.js';
+const g_debug = Debug.extend(FORMAT_ID);
 
 const sig90 = [
 	0x06, 0x0E, 0x1F, 0x8B, 0x0E, 0x0C, 0x00, 0x8B,
@@ -235,7 +235,7 @@ function getbit(p)
 	return b;
 }
 
-module.exports = class Compress_LZEXE
+export default class Compress_LZEXE
 {
 	static metadata() {
 		return {
@@ -461,4 +461,4 @@ module.exports = class Compress_LZEXE
 		return content;
 	}
 */
-};
+}

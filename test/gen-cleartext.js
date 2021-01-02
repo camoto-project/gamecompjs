@@ -14,4 +14,4 @@ for (let i = 0; i < s2.length; i++) {
 }
 //require('fs').writeFileSync('cleartxt.bin', standardCleartext);
 
-module.exports = standardCleartext;
+export default standardCleartext;

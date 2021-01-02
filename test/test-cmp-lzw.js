@@ -17,12 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const assert = require('assert');
-const BitStream = require('bit-buffer').BitStream;
-
-const TestUtil = require('./util.js');
-const standardCleartext = require('./gen-cleartext.js');
-const GameCompression = require('../index.js');
+import assert from 'assert';
+import { BitStream } from 'bit-buffer';
+import TestUtil from './util.js';
+import standardCleartext from './gen-cleartext.js';
+import { cmp_lzw as handler } from '../index.js';
 
 function makeU8(as) {
 	let s = as.join('');
@@ -34,7 +33,6 @@ function makeU8(as) {
 	return u8;
 }
 
-const handler = GameCompression.getHandler('cmp-lzw');
 const md = handler.metadata();
 let testutil = new TestUtil(md.id);
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {

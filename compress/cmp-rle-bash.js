@@ -22,14 +22,14 @@
 
 const FORMAT_ID = 'cmp-rle-bash';
 
-const { RecordBuffer, RecordType } = require('@camoto/record-io-buffer');
-const debug = require('debug')('gamecomp:' + FORMAT_ID);
-const g_debug = debug;
+import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
+import Debug from '../util/utl-debug.js';
+const g_debug = Debug.extend(FORMAT_ID);
 
 /// Trigger byte value for an RLE event.
 const RLE_TRIGGER = 0x90;
 
-module.exports = class Compress_RLE_MonsterBash
+export default class Compress_RLE_MonsterBash
 {
 	static metadata() {
 		return {
@@ -115,4 +115,4 @@ module.exports = class Compress_RLE_MonsterBash
 
 		return output.getU8();
 	}
-};
+}

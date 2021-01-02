@@ -22,10 +22,10 @@
 
 const FORMAT_ID = 'cmp-lzw';
 
-const { BitStream, BitView } = require('bit-buffer');
-const { RecordBuffer, RecordType } = require('@camoto/record-io-buffer');
-const debug = require('debug')('gamecomp:' + FORMAT_ID);
-const g_debug = debug;
+import { BitStream, BitView } from 'bit-buffer';
+import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
+import Debug from '../util/utl-debug.js';
+const g_debug = Debug.extend(FORMAT_ID);
 
 function parseBool(s) {
 	if (s === undefined) {
@@ -40,6 +40,7 @@ function parseBool(s) {
 
 // Extract dictionary entry i as an array of bytes
 function dictEntry(dict, i) {
+	const debug = g_debug.extend('dictEntry');
 	let s = [];
 	do {
 		if (!dict[i]) {
@@ -52,7 +53,7 @@ function dictEntry(dict, i) {
 	return s;
 }
 
-module.exports = class Compress_LZW
+export default class Compress_LZW
 {
 	static metadata() {
 		return {
@@ -477,4 +478,4 @@ module.exports = class Compress_LZW
 
 		return new Uint8Array(buffer, 0, bs.byteIndex);
 	}
-};
+}

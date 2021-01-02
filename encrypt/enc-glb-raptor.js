@@ -20,11 +20,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const { RecordType } = require('@camoto/record-io-buffer');
-
 const FORMAT_ID = 'enc-glb-raptor';
 
-module.exports = class Encrypt_GLB_Raptor
+import { RecordType } from '@camoto/record-io-buffer';
+
+export default class Encrypt_GLB_Raptor
 {
 	static metadata() {
 		return {
@@ -85,5 +85,4 @@ module.exports = class Encrypt_GLB_Raptor
 
 		return output;
 	}
-
-};
+}

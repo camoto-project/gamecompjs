@@ -25,12 +25,9 @@
 
 const FORMAT_ID = 'cmp-lzss';
 
-const {
-	RecordBuffer,
-	RecordType
-} = require('@camoto/record-io-buffer');
-const debug = require('debug')('gamecomp:' + FORMAT_ID);
-const g_debug = debug;
+import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
+import Debug from '../util/utl-debug.js';
+const g_debug = Debug.extend(FORMAT_ID);
 
 function parseBool(s) {
 	if (s === undefined) {
@@ -43,7 +40,8 @@ function parseBool(s) {
 	return !!s;
 }
 
-module.exports = class Compress_LZSS {
+export default class Compress_LZSS
+{
 	static metadata() {
 		return {
 			id: FORMAT_ID,
@@ -356,4 +354,4 @@ module.exports = class Compress_LZSS {
 
 		return output.getU8();
 	}
-};
+}

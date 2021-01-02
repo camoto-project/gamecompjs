@@ -98,10 +98,10 @@ You're ready to go!  To add a new algorithm:
 During development you can examine the output of your algorithm like this:
 
     # Decompress (remove algo/reveal data)
-    $ DEBUG='gamecomp:cmp-myformat*' ./bin/gamecomp -cmp-myformat param=value < compressed.bin > clear.test
+    $ DEBUG='gamecomp:cmp-myformat*' ./bin/gamecomp.js -cmp-myformat param=value < compressed.bin > clear.test
 
     # Compress (apply algo/obscure data)
-    $ DEBUG='gamecomp:cmp-myformat*' ./bin/gamecomp +cmp-myformat param=value < clear.bin > compressed.test
+    $ DEBUG='gamecomp:cmp-myformat*' ./bin/gamecomp.js +cmp-myformat param=value < clear.bin > compressed.test
 
 If you use `debug()` rather than `console.log` then these messages can be left
 in for future diagnosis as they will only appear when the `DEBUG` environment

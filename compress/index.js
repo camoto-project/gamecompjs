@@ -1,5 +1,5 @@
 /*
- * Main library interface.
+ * Compression algorithm aggregator.
  *
  * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -17,20 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-export * from './compress/index.js';
-export * from './encrypt/index.js';
-
-import * as compress from './compress/index.js';
-import * as encrypt from './encrypt/index.js';
-
-/**
- * Get a list of all the available handlers.
- *
- * This is preferable to `import *` because most libraries also export utility
- * functions like the autodetection routine which would be included even though
- * they are not format handlers.
- */
-export const all = [
-	...Object.values(compress),
-	...Object.values(encrypt),
-];
+export { default as cmp_lzexe } from './cmp-lzexe.js';
+export { default as cmp_lzw } from './cmp-lzw.js';
+export { default as cmp_lzss } from './cmp-lzss.js';
+export { default as cmp_rle_bash } from './cmp-rle-bash.js';

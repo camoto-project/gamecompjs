@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const TestUtil = require('./util.js');
-const standardCleartext = require('./gen-cleartext.js');
-const GameCompression = require('../index.js');
+import TestUtil from './util.js';
+import standardCleartext from './gen-cleartext.js';
+import { all as gamecompAll } from '../index.js';
 
 // Override the default colours so we can actually see them
-var colors = require('mocha/lib/reporters/base').colors;
+import { colors } from 'mocha/lib/reporters/base.js';
 colors['diff added'] = '1;33';
 colors['diff removed'] = '1;31';
 colors['green'] = '1;32';
@@ -30,7 +30,7 @@ colors['fail'] = '1;31';
 colors['error message'] = '1;31';
 colors['error stack'] = '1;37';
 
-GameCompression.listHandlers().forEach(handler => {
+for (const handler of gamecompAll) {
 	const md = handler.metadata();
 	let testutil = new TestUtil(md.id);
 
@@ -78,4 +78,4 @@ GameCompression.listHandlers().forEach(handler => {
 			});
 		}
 	});
-});
+}

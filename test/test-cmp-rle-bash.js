@@ -17,10 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const TestUtil = require('./util.js');
-const GameCompression = require('../index.js');
+import TestUtil from './util.js';
+import { cmp_rle_bash as handler } from '../index.js';
 
-const handler = GameCompression.getHandler('cmp-rle-bash');
 const md = handler.metadata();
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
