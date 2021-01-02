@@ -1,10 +1,10 @@
-/**
- * @file Monster Bash RLE compression algorithm.
+/*
+ * Monster Bash RLE compression algorithm.
  *
  * This algorithm is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/DAT_Format_%28Monster_Bash%29
  *
- * Copyright (C) 2018-2020 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

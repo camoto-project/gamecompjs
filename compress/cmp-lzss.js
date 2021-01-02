@@ -1,13 +1,13 @@
-/**
- * @file LZSS compression algorithm.
+/*
+ * LZSS compression algorithm.
  *
  * This algorithm is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/LZSS_compression
  *
- * A portion of this implementation is based on Andy McFadden's annotated 
+ * A portion of this implementation is based on Andy McFadden's annotated
  * LZSS compressor source, which in turn is based on Haruhiko Okumura's code.
  *
- * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

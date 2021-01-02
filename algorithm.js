@@ -1,7 +1,7 @@
-/**
- * @file Base class and defaults for supported algorithms.
+/*
+ * Base class and defaults for supported algorithms.
  *
- * Copyright (C) 2018 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-module.exports = class Algorithm
+export default class Algorithm
 {
 	/**
 	 * Retrieve information about the algorithm.
@@ -82,4 +82,4 @@ module.exports = class Algorithm
 	static obscure(content, params = {}) {
 		throw new Error('Not implemented yet.');
 	};
-};
+}
