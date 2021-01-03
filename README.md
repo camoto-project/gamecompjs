@@ -1,5 +1,5 @@
 # gamecomp.js
-Copyright 2018-2021 Adam Nielsen <<malvineous@shikadi.net>>  
+Copyright 2010-2021 Adam Nielsen <<malvineous@shikadi.net>>  
 
 This is a Javascript library that can pass data through different algorithms
 used by MS-DOS games from the 1990s.  Typically this is used to compress and
@@ -11,6 +11,8 @@ If you wish to use the command-line `gamecomp` utility to work with the
 algorithms directly, you can install the library globally on your system:
 
     npm install -g @camoto/gamecomp
+
+For Arch Linux users the AUR package `gamecompjs` is also available.
 
 ### Command line interface
 
@@ -41,17 +43,15 @@ in the usual way:
 
 See `cli/index.js` for example use.  The quick start is:
 
-    const GameCompression = require('@camoto/gamecomp');
+    import { cmp_lzw, enc_xor_blood } from '@camoto/gamecomp';
     
     // Decompress a file
-    const cmpAlgo = GameCompression.getHandler('cmp-lzw');
     const input = fs.readFileSync('data.lzw');
-    const output = cmpAlgo.reveal(content);
+    const output = cmp_lzw.reveal(content);
     fs.writeFileSync('data.raw', output);
     
     // Encrypt the file with custom options
-    const crypto = GameCompression.getHandler('enc-xor-blood');
-    const output = crypto.obscure(input, {
+    const output = enc_xor_blood.obscure(input, {
         seed: 123,
     });
     fs.writeFileSync('data.xor', output);
@@ -72,7 +72,8 @@ You're ready to go!  To add a new algorithm:
  1. Create a new file in the relevant subfolder for the algorithm type, such as
     `compress/` or `encrypt/`.
 
- 2. Edit the main `index.js` and add a `require()` statement for your new file.
+ 2. In the `compress/` or `encrypt/` folder, edit `index.js` and add a line for
+    your new file.
 
  3. Make a folder in `test/` for your new algorithm and populate it with
     files similar to the others.  The tests work by passing standard data to
@@ -84,7 +85,7 @@ You're ready to go!  To add a new algorithm:
         npm run -s test -- -g cmp-myformat
     
     Your tests will fail until you have created the expected sample files in
-    the `tests/cmp-myformat/` folder.
+    the `test/cmp-myformat/` folder.
     
     You can either create these files by hand, with another utility, or if you
     are confident that your code is correct, from the code itself.  This is done
@@ -94,6 +95,17 @@ You're ready to go!  To add a new algorithm:
     
         SAVE_FAILED_TEST=1 npm run -s test -- -g cmp-myformat
         mv error1.bin test/cmp-myformat/default.bin
+    
+    If you wish to run more than the standard tests, create a separate file in
+    the `test/` folder named like `test-cmp-myformat.js`.  Copy the content from
+    one of the existing files as an example.  As the standard tests are fairly
+    basic and won't test edge cases in most algorithms, it is a good idea to
+    create extra tests to cover these cases.
+    
+    See `test/test-enc-glb-raptor.js` for examples that load more test files
+    from the same directory that the standard tests use, or
+    `test/test-cmp-rle-bash.js` for simpler tests that only need to use a small
+    array of data bytes.
 
 During development you can examine the output of your algorithm like this:
 
