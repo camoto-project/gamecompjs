@@ -23,7 +23,7 @@
 const FORMAT_ID = 'cmp-rle-bash';
 
 import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
-import Debug from '../util/utl-debug.js';
+import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
 
 /// Trigger byte value for an RLE event.
