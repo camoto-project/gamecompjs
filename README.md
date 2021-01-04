@@ -8,11 +8,11 @@ decompress game data, as well as encrypt and decrypt it too.
 ## Installation as an end-user
 
 If you wish to use the command-line `gamecomp` utility to work with the
-algorithms directly, you can install the library globally on your system:
+algorithms directly, you can install the CLI globally on your system:
 
-    npm install -g @camoto/gamecomp
+    npm install -g @camoto/gamecomp-cli
 
-For Arch Linux users the AUR package `gamecompjs` is also available.
+For Arch Linux users the AUR package `gamecomp-cli` is also available.
 
 ### Command line interface
 

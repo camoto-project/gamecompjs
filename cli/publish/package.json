@@ -1,0 +1,13 @@
+{
+  "name": "@camoto/gamecomp-cli",
+  "version": "1.0.0",
+  "description": "CLI for gamecomp.js, for use with `npm install -g`",
+  "bin": {
+    "gamecode": "./node_modules/@camoto/gamecomp/bin/gamecomp.js"
+  },
+  "author": "Adam Nielsen <malvineous@shikadi.net>",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@camoto/gamecomp": "*"
+  }
+}
