@@ -30,6 +30,7 @@ export default function cli() {
 		console.log('gamecomp +example     // Compress/encrypt with "example" algorithm');
 		console.log('gamecomp -example     // Decompress/decrypt with "example"');
 		console.log('gamecomp +ex opt=123  // Pass parameter to algorithm');
+		console.log('DEBUG=\'gamecomp:*\' gamecomp ...  // Troubleshoot');
 		process.exit(0);
 	}
 
