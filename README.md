@@ -61,11 +61,11 @@ See `cli/index.js` for example use.  The quick start is:
 If you would like to help add more file formats to the library, great!
 Clone the repo, and to get started:
 
-    npm install --dev
+    npm install
 
 Run the tests to make sure everything worked:
 
-    npm run -s test
+    npm test
 
 You're ready to go!  To add a new algorithm:
 
@@ -82,7 +82,7 @@ You're ready to go!  To add a new algorithm:
     the grep (`-g`) parameter to Mocha, the test framework.  This will run any
     test matching the given string:
     
-        npm run -s test -- -g cmp-myformat
+        npm test -- -g cmp-myformat
     
     Your tests will fail until you have created the expected sample files in
     the `test/cmp-myformat/` folder.
@@ -93,8 +93,8 @@ You're ready to go!  To add a new algorithm:
     the data produced by your code to be saved to a temporary file in the
     current directory:
     
-        SAVE_FAILED_TEST=1 npm run -s test -- -g cmp-myformat
-        mv error1.bin test/cmp-myformat/default.bin
+        SAVE_FAILED_TEST=1 npm test -- -g cmp-myformat
+        cd test/cmp-myformat/ && mv default.bin.failed_test_output default.bin
     
     If you wish to run more than the standard tests, create a separate file in
     the `test/` folder named like `test-cmp-myformat.js`.  Copy the content from
