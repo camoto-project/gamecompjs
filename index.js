@@ -17,11 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-export * from './compress/index.js';
-export * from './encrypt/index.js';
+export * from './formats/index.js';
 
-import * as compress from './compress/index.js';
-import * as encrypt from './encrypt/index.js';
+import * as formats from './formats/index.js';
 
 /**
  * Get a list of all the available handlers.
@@ -31,6 +29,5 @@ import * as encrypt from './encrypt/index.js';
  * they are not format handlers.
  */
 export const all = [
-	...Object.values(compress),
-	...Object.values(encrypt),
+	...Object.values(formats),
 ];

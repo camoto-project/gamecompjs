@@ -3,8 +3,7 @@ import lint from 'mocha-eslint';
 const paths = [
 	'index.js',
 	'cli/*.js',
-	'compress',
-	'encrypt',
+	'formats',
 	'test',
 	'util',
 ];

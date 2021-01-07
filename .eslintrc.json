@@ -47,10 +47,7 @@
 			}
 		},
 		{
-			"files": [
-				"compress/**/*.js",
-				"encrypt/**/*.js"
-			],
+			"files": ["formats/**/*.js"],
 			"rules": {
 				"no-console": [
 					"error",
@@ -67,7 +64,7 @@
 			}
 		},
 		{
-			"files": ["util/utl-debug.js"],
+			"files": ["util/debug.js"],
 			"rules": {
 				"no-console": "off"
 			}

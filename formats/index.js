@@ -1,5 +1,5 @@
 /*
- * Encryption algorithm aggregator.
+ * Format aggregator.
  *
  * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -16,6 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+export { default as cmp_lzexe } from './cmp-lzexe.js';
+export { default as cmp_lzss } from './cmp-lzss.js';
+export { default as cmp_lzw } from './cmp-lzw.js';
+export { default as cmp_rle_bash } from './cmp-rle-bash.js';
 
 export { default as enc_glb_raptor } from './enc-glb-raptor.js';
 export { default as enc_xor_blood } from './enc-xor-blood.js';
