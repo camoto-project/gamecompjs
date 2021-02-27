@@ -1,6 +1,6 @@
 {
   "name": "@camoto/gamecomp",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Apply and remove compression and encryption algorithms used by DOS games",
   "bin": {
     "gamecomp": "./bin/gamecomp.js"
