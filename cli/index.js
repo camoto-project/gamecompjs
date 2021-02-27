@@ -20,6 +20,9 @@
 import fs from 'fs';
 import { all as gamecompAll } from '../index.js';
 
+import Debug from '../util/debug.js';
+const debug = Debug.extend('cli');
+
 export default function cli() {
 
 	const param = process.argv[2];
@@ -80,10 +83,16 @@ export default function cli() {
 
 	const content = fs.readFileSync(0, null);
 	let outBuffer;
-	if (obscure) {
-		outBuffer = handler.obscure(content, options);
-	} else {
-		outBuffer = handler.reveal(content, options);
+	try {
+		if (obscure) {
+			outBuffer = handler.obscure(content, options);
+		} else {
+			outBuffer = handler.reveal(content, options);
+		}
+	} catch (e) {
+		debug(e);
+		console.error(`ERROR: ${e.message}`);
+		process.exit(2);
 	}
 
 	process.stdout.write(outBuffer);
