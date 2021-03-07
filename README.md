@@ -16,6 +16,7 @@ decompress game data, as well as encrypt and decrypt it too.
 
 ### Encryption
 
+* enc-bpa-drally-filename: Death Rally *.BPA filename encryption
 * enc-glb-raptor: Raptor *.GLB cipher
 * enc-xor-blood: Monolith/Blood *.RFF XOR cipher
 
