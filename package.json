@@ -42,6 +42,13 @@
     "bit-buffer": "^0.2.4",
     "debug": "^4.3.1"
   },
+  "files": [
+    "bin/",
+    "cli/*.js",
+    "formats/",
+    "util/",
+    "index.js"
+  ],
   "directories": {
     "test": "test"
   }
