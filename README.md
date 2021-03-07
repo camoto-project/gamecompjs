@@ -5,6 +5,20 @@ This is a Javascript library that can pass data through different algorithms
 used by MS-DOS games from the 1990s.  Typically this is used to compress and
 decompress game data, as well as encrypt and decrypt it too.
 
+## Supported algorithms
+
+### Compression
+
+* cmp-lzexe: LZEXE .exe files (decompression only, equivalent to UNLZEXE)
+* cmp-lzss: Generic LZSS (Lempel-Ziv-Storer-Szymanski)
+* cmp-lzw: Generic LZW (Lempel-Ziv-Welch)
+* cmp-rle-bash: Monster Bash *.DAT run-length-encoding
+
+### Encryption
+
+* enc-glb-raptor: Raptor *.GLB cipher
+* enc-xor-blood: Monolith/Blood *.RFF XOR cipher
+
 ## Installation as an end-user
 
 If you wish to use the command-line `gamecomp` utility to work with the
