@@ -13,6 +13,7 @@ decompress game data, as well as encrypt and decrypt it too.
 * cmp-lzss: Generic LZSS (Lempel-Ziv-Storer-Szymanski)
 * cmp-lzw: Generic LZW (Lempel-Ziv-Welch)
 * cmp-rle-bash: Monster Bash *.DAT run-length-encoding
+* cmp-rlew-id: id Software RLEW run-length-encoding
 
 ### Encryption
 
