@@ -27,3 +27,5 @@ export { default as cmp_rlew_id } from './cmp-rlew-id.js';
 export { default as enc_bpa_drally_filename } from './enc-bpa-drally-filename.js';
 export { default as enc_glb_raptor } from './enc-glb-raptor.js';
 export { default as enc_xor_blood } from './enc-xor-blood.js';
+
+export { default as pad_generic } from './pad-generic.js';

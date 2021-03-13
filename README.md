@@ -22,6 +22,11 @@ decompress game data, as well as encrypt and decrypt it too.
 * enc-glb-raptor: Raptor *.GLB cipher
 * enc-xor-blood: Monolith/Blood *.RFF XOR cipher
 
+### Other
+
+* pad-generic: Add/remove padding bytes at repeating intervals to account for
+  bugs in the way some games load and save files.
+
 ## Installation as an end-user
 
 If you wish to use the command-line `gamecomp` utility to work with the
