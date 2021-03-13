@@ -33,6 +33,7 @@ export default function cli() {
 		console.log('gamecomp +example     // Compress/encrypt with "example" algorithm');
 		console.log('gamecomp -example     // Decompress/decrypt with "example"');
 		console.log('gamecomp +ex opt=123  // Pass parameter to algorithm');
+		console.log('gamecomp +ex @opt=file.dat  // Pass file content as parameter');
 		console.log('DEBUG=\'gamecomp:*\' gamecomp ...  // Troubleshoot');
 		process.exit(0);
 	}
@@ -73,7 +74,15 @@ export default function cli() {
 	// Parse any name=value parameters
 	let options = {};
 	for (let i = 3; i < process.argv.length; i++) {
-		const [name, value] = process.argv[i].split('=');
+		let [name, value] = process.argv[i].split('=');
+		if (name[0] === '@') {
+			name = name.slice(1);
+			try {
+				value = fs.readFileSync(value);
+			} catch (e) {
+				throw new Error(`Unable to open ${value}: ${e.message}`);
+			}
+		}
 		if (!md.options[name]) {
 			console.error(`Unknown option: ${name}`);
 			process.exit(1);
