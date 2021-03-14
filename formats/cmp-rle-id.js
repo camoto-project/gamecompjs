@@ -51,6 +51,12 @@ export default class Compress_RLE_id
 			const v = getByte();
 			if (v & 0x80) {
 				let lenEscape = (v & 0x7F) + 1;
+				if (lenEscape > input.distFromEnd()) {
+					debug(`Tried to escape ${lenEscape} bytes, but there are only `
+						+ `${input.distFromEnd()} bytes left.`);
+					// Just limit to whatever's left.
+					lenEscape = input.distFromEnd();
+				}
 				output.put(input.get(lenEscape));
 			} else {
 				let repeat = v + 3;
@@ -62,7 +68,7 @@ export default class Compress_RLE_id
 		return output.getU8();
 	}
 
-	static obscure(content, options = {}) {
+	static obscure(content) {
 		const debug = g_debug.extend('obscure');
 
 		let input = new RecordBuffer(content);
@@ -94,12 +100,14 @@ export default class Compress_RLE_id
 		function flushDiff() {
 			// Had different bytes but now have repeated ones.  Write out all the
 			// different bytes ready for the repeated ones.
-			let len = diff.length;
-			putByte(0x80 + len - 1);
-			for (let i = 0; i < len; i++) {
-				putByte(diff[i]);
+			while (diff.length) {
+				let len = Math.min(diff.length, 128);
+				putByte(0x80 + len - 1);
+				for (let i = 0; i < len; i++) {
+					putByte(diff[i]);
+				}
+				diff = diff.slice(len);
 			}
-			diff = [];
 		}
 
 		while (input.distFromEnd() > 0) {

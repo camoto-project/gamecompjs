@@ -38,7 +38,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		});
 	}
 
-	describe('escape', function() {
+	describe('pass', function() {
 		run({
 		}, [
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -65,7 +65,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
-	describe('escape, RLE', function() {
+	describe('pass, RLE', function() {
 		run({
 		}, [
 			0x01, 0x02, 0x03, 0x03, 0x03,
@@ -74,7 +74,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
-	describe('RLE, escape', function() {
+	describe('RLE, pass', function() {
 		run({
 		}, [
 			0x03, 0x03, 0x03, 0x01, 0x02,
@@ -83,7 +83,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
-	describe('RLE, escape, RLE', function() {
+	describe('RLE, pass, RLE', function() {
 		run({
 		}, [
 			0x01, 0x01, 0x01, 0xFF, 0x03, 0x03, 0x03, 0x03, 0x03,
@@ -92,7 +92,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
-	describe('escape, RLE, escape', function() {
+	describe('pass, RLE, pass', function() {
 		run({
 		}, [
 			0x01, 0x02, 0x02, 0x02, 0x03,
@@ -137,7 +137,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
-	describe('max-RLE, 1-leftover (to escape)', function() {
+	describe('max-RLE, 1-leftover (to pass)', function() {
 		run({
 		}, [
 			...Array(131).fill(0x01),
@@ -164,12 +164,58 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
-	describe('2x-max-RLE, 1-leftover (to escape)', function() {
+	describe('2x-max-RLE, 1-leftover (to pass)', function() {
 		run({
 		}, [
 			...Array(130*2+1).fill(0x01),
 		], [
 			0x7F, 0x01, 0x7F, 0x01, 0x80, 0x01,
+		]);
+	});
+
+	describe('max-pass', function() {
+		let nonrepeat = Array(128).fill(0x01);
+		for (let i = 0; i < nonrepeat.length; i += 2) nonrepeat[i] = 0x02;
+		run({
+		}, [
+			...nonrepeat,
+		], [
+			0xFF, ...nonrepeat,
+		]);
+	});
+
+	describe('max-pass, 1-leftover', function() {
+		let nonrepeat = Array(128).fill(0x01);
+		for (let i = 0; i < nonrepeat.length; i += 2) nonrepeat[i] = 0x02;
+		let nonrepeat2 = Array(1).fill(0x01);
+		for (let i = 0; i < nonrepeat2.length; i += 2) nonrepeat2[i] = 0x02;
+		run({
+		}, [
+			...nonrepeat, ...nonrepeat2,
+		], [
+			0xFF, ...nonrepeat, 0x80, ...nonrepeat2,
+		]);
+	});
+
+	describe('max-pass, 2-leftover', function() {
+		let nonrepeat = Array(128).fill(0x01);
+		for (let i = 0; i < nonrepeat.length; i += 2) nonrepeat[i] = 0x02;
+		let nonrepeat2 = Array(2).fill(0x01);
+		for (let i = 0; i < nonrepeat2.length; i += 2) nonrepeat2[i] = 0x02;
+		run({
+		}, [
+			...nonrepeat, ...nonrepeat2,
+		], [
+			0xFF, ...nonrepeat, 0x81, ...nonrepeat2,
+		]);
+	});
+
+	describe('RLE RLE-code', function() {
+		run({
+		}, [
+			0x80, 0x80, 0x80,
+		], [
+			0x00, 0x80,
 		]);
 	});
 
