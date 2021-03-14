@@ -22,7 +22,7 @@
 
 const FORMAT_ID = 'pad-generic';
 
-import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
+import { RecordBuffer } from '@camoto/record-io-buffer';
 import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
 
@@ -33,24 +33,20 @@ export default class Pad_Generic
 			id: FORMAT_ID,
 			title: 'Generic padding',
 			options: {
-				pass: 'Number of bytes to pass through before padding',
-				pad: 'Number of padding bytes to insert or remove',
-				value: 'Byte value to use for padding (0..255), default 0',
-				final: '1=pad when pass chunk ends at EOF, default 0',
+				pass: 'Number of bytes to pass through before padding (16)',
+				pad: 'Number of padding bytes to insert or remove (1)',
+				value: 'Byte value (0..255) to use for padding (0)',
+				final: '1=pad when pass chunk ends at EOF (0)',
 			},
 		};
 	}
 
-	static reveal(content, options)
+	static reveal(content, options = {})
 	{
 		const debug = g_debug.extend('reveal');
 
-		if (!options.pass) {
-			throw new Error('Must specify number of bytes to pass through.');
-		}
-		if (!options.pad) {
-			throw new Error('Must specify number of padding bytes to insert or remove.');
-		}
+		if (!options.pass) options.pass = 16;
+		if (!options.pad) options.pad = 1;
 
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length - Math.floor(content.length / options.pass) * options.pad);
@@ -69,22 +65,19 @@ export default class Pad_Generic
 		return output.getU8();
 	}
 
-	static obscure(content, options) {
+	static obscure(content, options = {}) {
 		const debug = g_debug.extend('obscure');
 
-		if (!options.pass) {
-			throw new Error('Must specify number of bytes to pass through.');
-		}
-		if (!options.pad) {
-			throw new Error('Must specify number of padding bytes to insert or remove.');
-		}
+		if (!options.pass) options.pass = 16;
+		if (!options.pad) options.pad = 1;
+		if (!options.value) options.value = 0;
 
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length - Math.floor(content.length / options.pass) * options.pad);
 
 		// Create a padding chunk to write as needed.
 		let pad = new Uint8Array(options.pad);
-		pad.fill(options.value || 0);
+		pad.fill(options.value);
 
 		const finalPad = parseInt(options.final, 10) === 1;
 
