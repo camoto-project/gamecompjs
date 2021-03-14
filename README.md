@@ -27,6 +27,10 @@ decompress game data, as well as encrypt and decrypt it too.
 
 * pad-generic: Add/remove padding bytes at repeating intervals to account for
   bugs in the way some games load and save files.
+* pad-chunked: Apply an algorithm repeatedly over blocks of data in a file.
+  Used for cases where RLE algorithms cannot cross a 64 kB boundary, by
+  splitting the data into 64 kB chunks and applying the RLE or other algorithm
+  independently on each chunk.
 
 ## Installation as an end-user
 

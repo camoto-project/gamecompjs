@@ -30,3 +30,4 @@ export { default as enc_glb_raptor } from './enc-glb-raptor.js';
 export { default as enc_xor_blood } from './enc-xor-blood.js';
 
 export { default as pad_generic } from './pad-generic.js';
+export { default as pad_chunked } from './pad-chunked.js';
