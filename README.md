@@ -13,7 +13,8 @@ decompress game data, as well as encrypt and decrypt it too.
 * cmp-lzss: Generic LZSS (Lempel-Ziv-Storer-Szymanski)
 * cmp-lzw: Generic LZW (Lempel-Ziv-Welch)
 * cmp-rle-bash: Monster Bash *.DAT run-length-encoding
-* cmp-rlew-id: id Software RLEW run-length-encoding
+* cmp-rlew-id: id Software RLEW encoding used in later games (Keen 4 and later)
+* cmp-rle-id: id Software RLE encoding used in early games (Keen 3 and earlier)
 * cmp-carmackize: id Software Carmackization compression
 
 ### Encryption

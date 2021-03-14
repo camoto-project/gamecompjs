@@ -22,6 +22,7 @@ export { default as cmp_lzexe } from './cmp-lzexe.js';
 export { default as cmp_lzss } from './cmp-lzss.js';
 export { default as cmp_lzw } from './cmp-lzw.js';
 export { default as cmp_rle_bash } from './cmp-rle-bash.js';
+export { default as cmp_rle_id } from './cmp-rle-id.js';
 export { default as cmp_rlew_id } from './cmp-rlew-id.js';
 
 export { default as enc_bpa_drally_filename } from './enc-bpa-drally-filename.js';
