@@ -27,27 +27,29 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	let content = {};
 	before('load test data from local filesystem', function() {
-		content.fat = testutil.loadData('fat.bin');
-		content.hello = testutil.loadData('hello.bin');
+		content = testutil.loadContent(handler, [
+			'hello',
+			'fat',
+		]);
 	});
 
 	describe('reveal()', function() {
 
 		it('works with a block size', function() {
 			const options = {blockSize: 28};
-			const contentRevealed = handler.reveal(content.fat, options);
+			const contentRevealed = handler.reveal(content['fat'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a string block size', function() {
 			const options = {blockSize: '28'};
-			const contentRevealed = handler.reveal(content.fat, options);
+			const contentRevealed = handler.reveal(content['fat'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different key', function() {
 			const options = {key: 'Hello'};
-			const contentRevealed = handler.reveal(content.hello, options);
+			const contentRevealed = handler.reveal(content['hello'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
@@ -58,19 +60,19 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		it('works with a block size', function() {
 			const options = {blockSize: 28};
 			const contentObscured = handler.obscure(standardCleartext, options);
-			TestUtil.buffersEqual(content.fat, contentObscured);
+			TestUtil.buffersEqual(content['fat'].main, contentObscured);
 		});
 
 		it('works with a string block size', function() {
 			const options = {blockSize: '28'};
 			const contentObscured = handler.obscure(standardCleartext, options);
-			TestUtil.buffersEqual(content.fat, contentObscured);
+			TestUtil.buffersEqual(content['fat'].main, contentObscured);
 		});
 
 		it('works with a different key', function() {
 			const options = {key: 'Hello'};
 			const contentObscured = handler.obscure(standardCleartext, options);
-			TestUtil.buffersEqual(content.hello, contentObscured);
+			TestUtil.buffersEqual(content['hello'].main, contentObscured);
 		});
 
 	});

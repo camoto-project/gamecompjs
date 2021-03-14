@@ -37,23 +37,33 @@ for (const handler of gamecompAll) {
 	describe(`Standard tests for ${md.title} [${md.id}]`, function() {
 		let content = {};
 		before('load test data from local filesystem', function() {
-			content.default = testutil.loadData('default.bin');
+			content = testutil.loadContent(handler, [
+				'default',
+			]);
 			try {
 				// Let the tests override the expected data if they require it in a
 				// particular format.
-				content.cleartext = testutil.loadData('clear.bin');
+				let optContent = testutil.loadContent(handler, [
+					'clear',
+				]);
+				content = {
+					...content,
+					...optContent,
+				};
 			} catch (e) {
-				// Otherwise use standard data
-				content.cleartext = standardCleartext;
+				// clear.bin not present, use standard data.
+				content.clear = {
+					main: standardCleartext,
+				};
 			}
 		});
 
 		describe('reveal() with default options', function() {
 			it('should reveal standard data correctly', function() {
-				let contentInput = Uint8Array.from(content.default);
+				let contentInput = Uint8Array.from(content.default.main);
 				const contentRevealed = handler.reveal(contentInput);
-				TestUtil.buffersEqual(content.cleartext, contentRevealed);
-				TestUtil.buffersEqual(content.default, contentInput, 'Input buffer was changed during reveal');
+				TestUtil.buffersEqual(content.clear.main, contentRevealed);
+				TestUtil.buffersEqual(content.default.main, contentInput, 'Input buffer was changed during reveal');
 			});
 		});
 
@@ -61,19 +71,19 @@ for (const handler of gamecompAll) {
 			describe('obscure() with default options', function() {
 				it('should obscure standard data correctly', function() {
 					// Copy buffer to ensure no changes
-					let contentInput = Uint8Array.from(content.cleartext);
+					let contentInput = Uint8Array.from(content.clear.main);
 					const contentObscured = handler.obscure(contentInput);
-					TestUtil.buffersEqual(content.default, contentObscured);
-					TestUtil.buffersEqual(content.cleartext, contentInput, 'Input buffer was changed during obscure');
+					TestUtil.buffersEqual(content.default.main, contentObscured);
+					TestUtil.buffersEqual(content.clear.main, contentInput, 'Input buffer was changed during obscure');
 				});
 			});
 
 			describe('obscure() then reveal() with default options', function() {
 				it(`should be able to undo own transformation on standard data`, function() {
-					let contentInput = Uint8Array.from(content.cleartext);
+					let contentInput = Uint8Array.from(content.clear.main);
 					const contentObscured = handler.obscure(contentInput);
 					const contentRevealed = handler.reveal(contentObscured);
-					TestUtil.buffersEqual(content.cleartext, contentRevealed);
+					TestUtil.buffersEqual(content.clear.main, contentRevealed);
 				});
 			});
 		}

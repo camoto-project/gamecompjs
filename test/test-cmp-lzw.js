@@ -39,7 +39,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	let content = {};
 	let presets = {
-		epfs: {
+		lionking: {
 			title: 'Lion King',
 			options: {
 				initialBits: 9,
@@ -91,9 +91,11 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		*/
 	};
 	before('load test data from local filesystem', function() {
-		content.default = testutil.loadData('default.bin');
-		content.mbash = testutil.loadData('mbash.bin');
-		content.epfs = testutil.loadData('lionking.bin');
+		content = testutil.loadContent(handler, [
+			'default',
+			'lionking',
+			'mbash',
+		]);
 	});
 
 	describe('reveal()', function() {
@@ -101,10 +103,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				assert.notEqual(content[id], null, `Content for ${p.title} is null`);
-				assert.notEqual(content[id], undefined, `Content for ${p.title} is undefined`);
+				assert.notEqual(content[id].main, null, `Content for ${p.title} is null`);
+				assert.notEqual(content[id].main, undefined, `Content for ${p.title} is undefined`);
 
-				const contentRevealed = handler.reveal(content[id], p.options);
+				const contentRevealed = handler.reveal(content[id].main, p.options);
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
@@ -196,11 +198,11 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				assert.notEqual(content[id], null, `Content for ${p.title} is null`);
-				assert.notEqual(content[id], undefined, `Content for ${p.title} is undefined`);
+				assert.notEqual(content[id].main, null, `Content for ${p.title} is null`);
+				assert.notEqual(content[id].main, undefined, `Content for ${p.title} is undefined`);
 
 				const contentObscured = handler.obscure(standardCleartext, p.options);
-				TestUtil.buffersEqual(content[id], contentObscured);
+				TestUtil.buffersEqual(content[id].main, contentObscured);
 			});
 		});
 

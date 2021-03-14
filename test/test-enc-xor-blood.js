@@ -27,43 +27,43 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	let content = {};
 	before('load test data from local filesystem', function() {
-		content.seed4f = testutil.loadData('seed4f.bin');
-
-		content.default_v300 = testutil.loadData('default-v300.bin');
-		content.seed4f_v300 = testutil.loadData('seed4f-v300.bin');
-
-		content.default_full = testutil.loadData('default-full.bin');
+		content = testutil.loadContent(handler, [
+			'default-full',
+			'default-v300',
+			'seed4f',
+			'seed4f-v300',
+		]);
 	});
 
 	describe('reveal()', function() {
 
 		it('works with a different seed', function() {
 			const options = {seed: 0x4f};
-			const contentRevealed = handler.reveal(content.seed4f, options);
+			const contentRevealed = handler.reveal(content['seed4f'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a string seed', function() {
 			const options = {seed: '0x4f'};
-			const contentRevealed = handler.reveal(content.seed4f, options);
+			const contentRevealed = handler.reveal(content['seed4f'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different offset', function() {
 			const options = {offset: 1};
-			const contentRevealed = handler.reveal(content.default_v300, options);
+			const contentRevealed = handler.reveal(content['default-v300'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('works with a different offset and seed', function() {
 			const options = {offset: 1, seed: 0x4f};
-			const contentRevealed = handler.reveal(content.seed4f_v300, options);
+			const contentRevealed = handler.reveal(content['seed4f-v300'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
 		it('does the full file when limit=0', function() {
 			const options = {limit: 0};
-			const contentRevealed = handler.reveal(content.default_full, options);
+			const contentRevealed = handler.reveal(content['default-full'].main, options);
 			TestUtil.buffersEqual(standardCleartext, contentRevealed);
 		});
 
@@ -74,13 +74,13 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		it('works with a different seed', function() {
 			const options = {seed: 0x4f};
 			const contentObscured = handler.obscure(standardCleartext, options);
-			TestUtil.buffersEqual(content.seed4f, contentObscured);
+			TestUtil.buffersEqual(content['seed4f'].main, contentObscured);
 		});
 
 		it('works with a string seed', function() {
 			const options = {seed: '0x4f'};
 			const contentObscured = handler.obscure(standardCleartext, options);
-			TestUtil.buffersEqual(content.seed4f, contentObscured);
+			TestUtil.buffersEqual(content['seed4f'].main, contentObscured);
 		});
 
 	});

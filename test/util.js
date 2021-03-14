@@ -65,10 +65,14 @@ export default class TestUtil {
 	}
 
 	loadData(filename) {
-		const buffer = fs.readFileSync(path.resolve(__dirname, this.idHandler, filename));
+		const buffer = fs.readFileSync(filename);
 		let ab = new ArrayBuffer(buffer.length);
 		let u8 = new Uint8Array(ab);
 		u8.set(buffer);
+
+		// Save the filename for later use.
+		u8.filename = filename;
+
 		return u8;
 	}
 
@@ -79,11 +83,11 @@ export default class TestUtil {
 			const files = fs.readdirSync(pathFiles);
 			const target = files.filter(f => f.startsWith(name + '.'));
 			assert.ok(target.length === 1, `Expected only one file: ${this.idHandler}/${name}.*`);
-			const mainFilename = path.join(this.idHandler, target[0]);
+
+			const mainFilename = path.join(__dirname, this.idHandler, target[0]);
 			let input = {
-				main: this.loadData(path.resolve(__dirname, mainFilename)),
+				main: this.loadData(mainFilename),
 			};
-			input.main.filename = mainFilename;
 
 			content[name] = input;
 		}
@@ -92,17 +96,21 @@ export default class TestUtil {
 	}
 
 	static buffersEqual(expected, actual, msg) {
-		const errorFilename = path.resolve(__dirname, expected.filename || 'error');
-
 		if (expected instanceof ArrayBuffer) {
 			expected = new Uint8Array(expected);
 		}
 		if (!arrayEqual(expected, actual)) {
 			if (process.env.SAVE_FAILED_TEST == 1) {
-				let fn = errorFilename + '.failed_test_output';
-				// eslint-disable-next-line no-console
-				console.warn(`** Saving actual data to ${fn}`);
-				fs.writeFileSync(fn, actual);
+				if (expected.filename) {
+					const errorFilename = path.resolve(__dirname, expected.filename || 'error');
+					let fn = errorFilename + '.failed_test_output';
+					// eslint-disable-next-line no-console
+					console.warn(`** Saving actual data to ${fn}`);
+					fs.writeFileSync(fn, actual);
+				} else {
+					// eslint-disable-next-line no-console
+					console.warn(`** Unable to save failed test data - not read from a file.`);
+				}
 			}
 
 			throw new assert.AssertionError({

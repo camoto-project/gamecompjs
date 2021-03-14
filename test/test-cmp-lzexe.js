@@ -29,6 +29,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	before('load test data from local filesystem', function() {
 
 		content = testutil.loadContent(handler, [
+			'clear',
 			'lzexe90',
 			'lzexe91',
 			'lzexe91e',
@@ -37,21 +38,19 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	describe('reveal()', function() {
 
-		const lzexeStandardCleartext = testutil.loadData('clear.bin');
-
 		it('works with LZEXE 0.90', function() {
 			const contentRevealed = handler.reveal(content['lzexe90'].main);
-			TestUtil.buffersEqual(lzexeStandardCleartext, contentRevealed);
+			TestUtil.buffersEqual(content['clear'].main, contentRevealed);
 		});
 
 		it('works with LZEXE 0.91', function() {
 			const contentRevealed = handler.reveal(content['lzexe91'].main);
-			TestUtil.buffersEqual(lzexeStandardCleartext, contentRevealed);
+			TestUtil.buffersEqual(content['clear'].main, contentRevealed);
 		});
 
 		it('works with LZEXE 0.91e', function() {
 			const contentRevealed = handler.reveal(content['lzexe91e'].main);
-			TestUtil.buffersEqual(lzexeStandardCleartext, contentRevealed);
+			TestUtil.buffersEqual(content['clear'].main, contentRevealed);
 		});
 
 	}); // reveal()
