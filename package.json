@@ -33,13 +33,13 @@
   },
   "homepage": "https://github.com/Malvineous/gamecompjs#readme",
   "devDependencies": {
-    "eslint": "^7.16.0",
-    "mocha": "^8.2.1",
-    "mocha-eslint": "^6.0.0"
+    "eslint": "^7.22.0",
+    "mocha": "^8.3.2",
+    "mocha-eslint": "^7.0.0"
   },
   "dependencies": {
     "@camoto/record-io-buffer": "^3.1.1",
-    "bit-buffer": "^0.2.4",
+    "bit-buffer": "^0.2.5",
     "debug": "^4.3.1"
   },
   "files": [
