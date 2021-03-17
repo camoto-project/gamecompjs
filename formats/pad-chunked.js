@@ -30,7 +30,7 @@ import { RecordBuffer } from '@camoto/record-io-buffer';
 import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
 
-export default class Pad_Generic
+export default class Pad_Chunked
 {
 	static metadata() {
 		return {
