@@ -33,13 +33,16 @@ export default class Compress_RLE_id
 			id: FORMAT_ID,
 			title: 'id Software RLE compression',
 			options: {
+				outputLength: 'Stop revealing when this number of output bytes have '
+					+ 'been produced (default read all input data until EOF)',
 			},
 		};
 	}
 
-	static reveal(content)
+	static reveal(content, options = {})
 	{
 		const debug = g_debug.extend('reveal');
+		const outputLength = parseInt(options.outputLength) || 0;
 
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length * 1.2);
@@ -47,7 +50,13 @@ export default class Compress_RLE_id
 		const getByte = input.read.bind(input, RecordType.int.u8);
 		const putByte = output.write.bind(output, RecordType.int.u8);
 
-		while (input.distFromEnd() > 0) {
+		while (
+			(input.distFromEnd() > 1) // At least two input bytes (RLE code + val)
+			&& (
+				(outputLength === 0) // And no output limit was given
+				|| (output.length < outputLength) // Or a limit was given and we are below it
+			)
+		) {
 			const v = getByte();
 			if (v & 0x80) {
 				let lenEscape = (v & 0x7F) + 1;

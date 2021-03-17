@@ -219,4 +219,14 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
+	describe('outputLength limit', function() {
+		const b_rev = Uint8Array.from([0x01, 0x02, 0x03, 0x04]);
+		const b_obs = Uint8Array.from([0x83, 0x01, 0x02, 0x03, 0x04, 0x82, 0x05, 0x06, 0x07]);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, { outputLength: 4 });
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
 });
