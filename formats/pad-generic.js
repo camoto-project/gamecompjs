@@ -49,7 +49,7 @@ export default class Pad_Generic
 		if (!options.pad) options.pad = 1;
 
 		let input = new RecordBuffer(content);
-		let output = new RecordBuffer(content.length - Math.floor(content.length / options.pass) * options.pad);
+		let output = new RecordBuffer(content.length - Math.floor(content.length / (options.pass + options.pad)) * options.pad);
 
 		while (input.distFromEnd() > 0) {
 			// Pass through a chunk.
@@ -73,7 +73,7 @@ export default class Pad_Generic
 		if (!options.value) options.value = 0;
 
 		let input = new RecordBuffer(content);
-		let output = new RecordBuffer(content.length - Math.floor(content.length / options.pass) * options.pad);
+		let output = new RecordBuffer(content.length + Math.floor(content.length / options.pass) * options.pad);
 
 		// Create a padding chunk to write as needed.
 		let pad = new Uint8Array(options.pad);
@@ -83,13 +83,15 @@ export default class Pad_Generic
 
 		while (input.distFromEnd() > 0) {
 			// Pass through a chunk.
+			const lenChunk = Math.min(input.distFromEnd(), options.pass);
 			output.put(
-				input.get(
-					Math.min(input.distFromEnd(), options.pass)
-				)
+				input.get(lenChunk)
 			);
-			// Add padding bytes.
-			if (finalPad || (input.distFromEnd() > 0)) {
+			// Add padding bytes if there is more data to process, or we're at the
+			// end of the data and the final chunk was a full pass (since we don't
+			// want to add final padding bytes if the last chunk wasn't a full number
+			// of 'pass' bytes).
+			if ((input.distFromEnd() > 0) || (finalPad && (lenChunk >= options.pass))) {
 				output.put(pad);
 			}
 		}
