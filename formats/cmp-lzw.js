@@ -23,7 +23,8 @@
 const FORMAT_ID = 'cmp-lzw';
 
 import { BitStream, BitView } from 'bit-buffer';
-import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
+import { RecordBuffer } from '@camoto/record-io-buffer';
+//import { RecordType } from '@camoto/record-io-buffer';
 import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
 
@@ -120,7 +121,7 @@ export default class Compress_LZW
 
 		let lenCodeword = options.initialBits;
 		let cwPrev = null;
-		let offCW = 0;
+		//let offCW = 0;
 
 		let nextDictCode, lastDictCode, cwEOF, cwDictReset;
 		function recalcCodewords() {
@@ -145,8 +146,8 @@ export default class Compress_LZW
 				lastDictCode = Math.min(cwDictReset - 1, lastDictCode);
 			}
 
-			debug(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
-				+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
+			//debug(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
+			//	+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
 		}
 		recalcCodewords();
 
@@ -155,8 +156,8 @@ export default class Compress_LZW
 			let cw;
 			try {
 				cw = bs.readBits(lenCodeword, false);
-				debug(`@0x${bs.byteIndex.toString(16)} -> CW#${offCW}: end of `
-					+ `next codeword ${cw}`);
+				//debug(`@0x${bs.byteIndex.toString(16)} -> CW#${offCW}: end of `
+				//	+ `next codeword ${cw}`);
 			} catch (e) {
 				console.error(e);
 				break;
@@ -170,6 +171,7 @@ export default class Compress_LZW
 				resetDict();
 				if (options.flushOnReset) {
 					// TODO flush byte
+					debug('TODO: flush byte on dict reset');
 				}
 				if (options.resetCodewordLen) {
 					lenCodeword = options.initialBits;
@@ -184,7 +186,7 @@ export default class Compress_LZW
 			} else {
 				// Codeword isn't in the dictionary, act as if we got the previous
 				// codeword again.
-				debug(`CW ${cw} isn't in dict, using prev CW ${cwPrev}`);
+				//debug(`CW ${cw} isn't in dict, using prev CW ${cwPrev}`);
 				if (dict[cwPrev] !== undefined) {
 					dictVal = dictEntry(dict, cwPrev);
 					// Append the first char onto the end of the dictionary string.  This
@@ -215,11 +217,11 @@ export default class Compress_LZW
 					dict.push({
 						ptr: cwPrev,
 						ch: dictVal[0],
-						//full: [...(dict[cwPrev] && dict[cwPrev].full || []), dictVal[0]],
 					});
 				}
 			}
 
+			/*
 			if (debug.enabled) {
 				const sdest = dictEntry(dict, dict.length-1);
 				const str = RecordType.string.fromArray(sdest)
@@ -235,6 +237,7 @@ export default class Compress_LZW
 					+ `CW ${cw} [${cwstr}] => Dict #${dict.length-1} [${str}]`);
 				offCW++;
 			}
+			*/
 
 			// This may put an invalid codeword into the dictionary, perhaps we
 			// should skip this step if 'cw' is invalid?
@@ -244,14 +247,14 @@ export default class Compress_LZW
 			// bits are still left to read.
 			if (dict.length > lastDictCode) {
 				// Time to extend bitwidth
-				debug('Codeword reached maximum width at', lenCodeword,
-					'bits, now at', dict.length, 'of', lastDictCode);
+				//debug('Codeword reached maximum width at', lenCodeword,
+				//	'bits, now at', dict.length, 'of', lastDictCode);
 				if (lenCodeword < options.maxBits) {
 					lenCodeword++;
 				} else {
 					// Reached maximum codeword length
 					if (options.resetDictWhenFull) {
-						debug('Emptying dictionary');
+						//debug('Emptying dictionary');
 						resetDict();
 						if (options.resetCodewordLen) {
 							lenCodeword = options.initialBits;
@@ -294,7 +297,6 @@ export default class Compress_LZW
 				dict[i] = {
 					ch: i < 256 ? i : 0,
 					ptr: null,
-					//full: [i],
 				};
 			}
 			dictIsClean = true;
@@ -320,16 +322,18 @@ export default class Compress_LZW
 				cwDictReset += nextDictCode;
 				lastDictCode = Math.min(cwDictReset - 1, lastDictCode);
 			}
-			debug(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
-				+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
+			//debug(`lenCodeword=${lenCodeword}, cwEOF=${cwEOF}, `
+			//	+ `cwDictReset=${cwDictReset}, lastDictCode=${lastDictCode}`);
 		}
 		recalcCodewords();
 
-		let offCW = -1; // offset of codeword, in number of codewords from start
+		//let offCW = -1; // offset of codeword, in number of codewords from start
 		for (let t of content) {
+			/*
 			offCW++;
 			debug(`@${offCW}->0x${bs.byteIndex.toString(16)} Next char `
 				+ `${String.fromCharCode(t)}`);
+			*/
 
 			// Find t in the dictionary
 			let inDict = false;
@@ -345,6 +349,7 @@ export default class Compress_LZW
 					idxPending = i;
 					inDict = true;
 
+					/*
 					if (debug.enabled) {
 						let pendingStr = '';
 						if (idxPending !== null) {
@@ -355,6 +360,7 @@ export default class Compress_LZW
 							+ `[${pendingStr}] + ${t} [${String.fromCharCode(t)}] in dict `
 							+ `as #${idxPending} -> new pending`);
 					}
+					*/
 					// 'continue;' here?
 					break;
 				}
@@ -375,6 +381,7 @@ export default class Compress_LZW
 
 					const dictVal = dictEntry(dict, idxPending);
 					if ((idxPending === cwPrev) && (t == dictVal[0])) {
+						/*
 						if (debug.enabled) {
 							let pendingStr = '';
 							if (idxPending !== null) {
@@ -387,6 +394,7 @@ export default class Compress_LZW
 								+ `prev code + prevcode[0], using self-referencing codeword `
 								+ `#${dict.length}`);
 						}
+						*/
 						idxPending = dict.length;
 						t = null;
 					}
@@ -410,6 +418,7 @@ export default class Compress_LZW
 					bs.writeBits(idxPending, lenCodeword);
 					cwPrev = idxPending;
 
+					/*
 					if (debug.enabled) {
 						const sdest = dictEntry(dict, dict.length-1);
 						const str = RecordType.string.fromArray(sdest);
@@ -425,6 +434,7 @@ export default class Compress_LZW
 							+ `dict, writing pending as codeword ${idxPending} => new dict `
 							+ `#${dict.length-1} <- ${idxPending} [${str}]`);
 					}
+					*/
 				} catch (e) {
 					debug('Bitstream error, ending early:', e);
 					idxPending = null;
@@ -433,8 +443,8 @@ export default class Compress_LZW
 
 				if (dict.length > lastDictCode) {
 					// Time to extend bitwidth
-					debug(`Codeword reached max val at width=${lenCodeword}, dict `
-						+ `now at ${dict.length} of ${lastDictCode}`);
+					//debug(`Codeword reached max val at width=${lenCodeword}, dict `
+					//	+ `now at ${dict.length} of ${lastDictCode}`);
 					if (lenCodeword < options.maxBits) {
 						lenCodeword++;
 						lastDictCode = (1 << lenCodeword) - 1;
