@@ -23,17 +23,17 @@ import { cmp_rlew_id as handler } from '../index.js';
 const md = handler.metadata();
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
-	function run(rev, obs) {
+	function run(rev, obs, options) {
 		const b_rev = Uint8Array.from(rev);
 		const b_obs = Uint8Array.from(obs);
 
 		it('decodes correctly', function() {
-			const contentRevealed = handler.reveal(b_obs);
+			const contentRevealed = handler.reveal(b_obs, options);
 			TestUtil.buffersEqual(b_rev, contentRevealed);
 		});
 
 		it('encodes correctly', function() {
-			const contentObscured = handler.obscure(b_rev);
+			const contentObscured = handler.obscure(b_rev, options);
 			TestUtil.buffersEqual(b_obs, contentObscured);
 		});
 	}
@@ -100,6 +100,26 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		], [
 			0x34,0x12, 0xFE,0xFE, 0x01,0x00, 0xFE,0xFE,
 		]);
+	});
+
+	describe('different RLE trigger works', function() {
+		run([
+			0x34,0x12, 0xAA,0xAA, 0xAA,0xAA, 0xAA,0xAA, 0xAA,0xAA,
+		], [
+			0x34,0x12, 0xCD,0xAB, 0x04,0x00, 0xAA,0xAA,
+		], {
+			code: 0xABCD,
+		});
+	});
+
+	describe('different RLE trigger (as string) works', function() {
+		run([
+			0x34,0x12, 0xAA,0xAA, 0xAA,0xAA, 0xAA,0xAA, 0xAA,0xAA,
+		], [
+			0x34,0x12, 0xCD,0xAB, 0x04,0x00, 0xAA,0xAA,
+		], {
+			code: '0xABCD',
+		});
 	});
 
 });
