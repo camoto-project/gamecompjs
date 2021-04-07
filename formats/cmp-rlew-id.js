@@ -63,6 +63,12 @@ export default class Compress_RLEW_id
 			}
 		}
 
+		// Take across any trailing byte.
+		if (input.distFromEnd() === 1) {
+			const b = input.read(RecordType.int.u8);
+			output.write(RecordType.int.u8, b);
+		}
+
 		return output.getU8();
 	}
 
@@ -113,6 +119,12 @@ export default class Compress_RLEW_id
 			} else {
 				while (pending--) putWord(prevWord);
 			}
+		}
+
+		// Take across any trailing byte.
+		if (input.distFromEnd() === 1) {
+			const b = input.read(RecordType.int.u8);
+			output.write(RecordType.int.u8, b);
 		}
 
 		return output.getU8();
