@@ -78,6 +78,13 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			assert.equal(result.valid, true);
 		});
 
+		it('ignores short files', function() {
+			const result = handler.identify(TestUtil.u8FromString('12345678'));
+
+			assert.equal(result.reason, 'File too short.');
+			assert.equal(result.valid, false);
+		});
+
 	}); // identify()
 
 });

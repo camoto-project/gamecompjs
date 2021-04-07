@@ -248,6 +248,13 @@ export default class Compress_LZEXE
 	static identify(content) {
 		const debug = g_debug.extend('identify');
 
+		if (content.length < 18 + sig90.length) {
+			return {
+				valid: false,
+				reason: 'File too short.',
+			};
+		}
+
 		let inf = new RecordBuffer(content);
 		inf.seekAbs(0);
 		const sig0 = inf.read(RecordType.int.u16le);
