@@ -140,4 +140,15 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		]);
 	});
 
+	it('handles EOF after codeword', function() {
+		const b_rev = Uint8Array.from([
+			0x34,0x12,
+		]);
+		const b_obs = Uint8Array.from([
+			0x34,0x12, 0xFE,0xFE,
+		]);
+		const contentRevealed = handler.reveal(b_obs);
+		TestUtil.buffersEqual(b_rev, contentRevealed);
+	});
+
 });

@@ -55,6 +55,11 @@ export default class Compress_RLEW_id
 		while (input.distFromEnd() > 1) {
 			const v = getWord();
 			if (v === codeWord) {
+				if (input.distFromEnd() < 4) {
+					debug('EOF within RLE code');
+					// Just stop here.
+					break;
+				}
 				let count = getWord();
 				const repeat = getWord();
 				while (count--) putWord(repeat);
