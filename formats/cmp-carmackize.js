@@ -74,6 +74,13 @@ export default class Compress_Carmackize
 			}
 		}
 
+		// Take across any trailing byte.
+		if (input.distFromEnd() === 1) {
+			// Trailing byte.
+			const b = input.read(RecordType.int.u8);
+			output.write(RecordType.int.u8, b);
+		}
+
 		return output.getU8();
 	}
 
@@ -81,13 +88,21 @@ export default class Compress_Carmackize
 		const debug = g_debug.extend('obscure');
 
 		let input = new RecordBuffer(content);
-		const inputWords = new Uint16Array(input.getU8().buffer);
+
+		// Have to round the Uint16Array to a multiple of 2.
+		const lenInWords = input.length >> 1;
+
+		// Create a typed array for speed.  This isn't endian-safe, but as we're
+		// only comparing one value against another in the same array, the byte
+		// order doesn't actually matter.
+		const inputWords = new Uint16Array(input.buffer, input.buffer.byteOffset, lenInWords);
+
 		let output = new RecordBuffer(content.length * 1.2);
 
 		const putWord = output.write.bind(output, RecordType.int.u16le);
 		const putByte = output.write.bind(output, RecordType.int.u8);
 
-		while (input.distFromEnd() > 0) {
+		while (input.distFromEnd() > 1) {
 			let offPos = input.getPos() >> 1; // divide by two, round to int
 
 			// Look back in the input data, comparing it to the upcoming input data,
@@ -142,6 +157,13 @@ export default class Compress_Carmackize
 						putWord(nextInput);
 				}
 			}
+		}
+
+		// Take across any trailing byte.
+		if (input.distFromEnd() === 1) {
+			// Trailing byte.
+			const b = input.read(RecordType.int.u8);
+			output.write(RecordType.int.u8, b);
 		}
 
 		return output.getU8();
