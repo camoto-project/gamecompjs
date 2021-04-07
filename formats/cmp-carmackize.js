@@ -81,50 +81,44 @@ export default class Compress_Carmackize
 		const debug = g_debug.extend('obscure');
 
 		let input = new RecordBuffer(content);
+		const inputWords = new Uint16Array(input.getU8().buffer);
 		let output = new RecordBuffer(content.length * 1.2);
 
 		const putWord = output.write.bind(output, RecordType.int.u16le);
 		const putByte = output.write.bind(output, RecordType.int.u8);
 
 		while (input.distFromEnd() > 0) {
-			let offStartInput = input.getPos();
-			let offStartOutput = output.getPos();
+			let offPos = input.getPos() >> 1; // divide by two, round to int
 
-			// Look back in the output data, comparing it to the upcoming input data,
+			// Look back in the input data, comparing it to the upcoming input data,
 			// and see if there is a match for a number of UINT16LE words.
 			let maxRun = 0, maxRunStart = 0;
 			for (let o = 1; o < 65536; o++) {
 				// Jump back one more word.
-				if (o * 2 > offStartOutput) {
+				if (o > offPos) {
 					// Gone all the way back to the start of the output data.
 					break;
 				}
-				output.seekAbs(offStartOutput - o * 2);
-				input.seekAbs(offStartInput);
+				//debug('    looking back', o, 'words (index', offPos - o, ')');
 				// See if the sequence from this point matches the input data.
 				let i;
-				for (i = 0; i < 255; i++) {
-					let runEnd;
-					if (input.distFromEnd() !== 0) {
-						const nextInput = input.read(RecordType.int.u16le);
-						const nextOutput = output.read(RecordType.int.u16le);
-						runEnd = nextInput !== nextOutput;
-					} else {
-						runEnd = true; // end of input data
-					}
-					if (runEnd) {
-						// The run finished with `i` bytes matching.
-						if (maxRun < i) {
-							maxRun = i;
-							maxRunStart = o;
-						}
-						break;
-					}
+				const maxLookForward = Math.min(255, o, inputWords.length - offPos);
+				for (i = 0; i < maxLookForward; i++) {
+					//debug(`    in: ${input.getPos()}, out: ${output.getPos()}`);
+					const nextInput = inputWords[offPos - o + i];
+					const nextOutput = inputWords[offPos + i];
+					//debug(`        nextInput = ${nextInput.toString(16)}, nextOutput = ${nextOutput.toString(16)}`);
+					if (nextInput !== nextOutput) break;
+				}
+				// The run finished with `i` bytes matching.
+				//debug(`        run finished with ${i} words matching`);
+				if (maxRun < i) {
+					maxRun = i;
+					maxRunStart = o;
 				}
 				// Keep going with the next word back to see if we can find a longer run.
 			}
-			input.seekAbs(offStartInput);
-			output.seekAbs(offStartOutput);
+			//debug(`found run of ${maxRun} @ -${maxRunStart}`);
 			if (maxRun >= 2) {
 				// We found a run worth compressing.
 				if (maxRunStart > 255) {
