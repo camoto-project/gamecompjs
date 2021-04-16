@@ -2,7 +2,7 @@
  * id Software RLEW compression algorithm.
  *
  * This algorithm is fully documented on the ModdingWiki:
- *   http://www.shikadi.net/moddingwiki/RLEW_compression
+ *   http://www.shikadi.net/moddingwiki/id_Software_RLEW_compression
  *
  * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
