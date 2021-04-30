@@ -26,6 +26,8 @@ import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
 import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
 
+import { pad_chunked } from './index.js';
+
 export default class Compress_RLE_id
 {
 	static metadata() {
@@ -33,6 +35,8 @@ export default class Compress_RLE_id
 			id: FORMAT_ID,
 			title: 'id Software RLE compression',
 			options: {
+				chunkLength: 'Number of bytes in each RLE chunk (RLE codes producing '
+					+ '0-15 bytes beyond this point are lost)',
 				outputLength: 'Stop revealing when this number of output bytes have '
 					+ 'been produced (default read all input data until EOF)',
 			},
@@ -43,6 +47,7 @@ export default class Compress_RLE_id
 	{
 		const debug = g_debug.extend('reveal');
 		const outputLength = parseInt(options.outputLength) || 0;
+		const chunkLength = parseInt(options.chunkLength) || 0xFF00;
 
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length * 1.2);
@@ -50,12 +55,20 @@ export default class Compress_RLE_id
 		const getByte = input.read.bind(input, RecordType.int.u8);
 		const putByte = output.write.bind(output, RecordType.int.u8);
 
+		// This isn't really the segment but rather the number of bytes into the
+		// output array where the last segment started, so we can subtract it from
+		// the output length to get the offset within the segment.
+		let outputSeg = 0;
+
 		while (
 			(input.distFromEnd() > 1) // At least two input bytes (RLE code + val)
+			/* We can't stop as soon as we fill the output buffer, because we might
+			 * be expanding an RLE code that then gets partly overwritten, so we have
+			 * to keep going until the end of the input data and then truncate it.
 			&& (
 				(outputLength === 0) // And no output limit was given
 				|| (output.length < outputLength) // Or a limit was given and we are below it
-			)
+			)*/
 		) {
 			const v = getByte();
 			if (v & 0x80) {
@@ -72,13 +85,38 @@ export default class Compress_RLE_id
 				let n = getByte();
 				while (repeat--) putByte(n);
 			}
+
+			const outputMemOffset = output.length - outputSeg;
+			if (outputMemOffset >= chunkLength) {
+				// Move the segment forward by (offset / 16) bytes.
+				outputSeg += outputMemOffset & ~0x0F;
+
+				// Move back to last 16-byte block, so the next data overwrites what we
+				// just wrote if needed.
+				output.seekAbs(outputSeg); // seg outputSeg, offset 0
+			}
+		}
+
+		// If we read extra data (e.g. from an RLE code that went past the chunk
+		// boundary but never got fully overwritten) then crop that off.
+		if ((outputLength > 0) && (output.length > outputLength)) {
+			output.truncate(outputLength);
 		}
 
 		return output.getU8();
 	}
 
-	static obscure(content) {
-		const debug = g_debug.extend('obscure');
+	static obscure(content, options = {}) {
+		const chunkLength = parseInt(options.chunkLength) || 0xFF00;
+
+		return pad_chunked.obscure(content, {
+			length: chunkLength,
+			callback: chunk => this.obscureBlock(chunk),
+		});
+	}
+
+	static obscureBlock(content) {
+		const debug = g_debug.extend('obscureBlock');
 
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length);

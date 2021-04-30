@@ -229,4 +229,410 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		});
 	});
 
+	describe('chunk length - no extra bytes', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		let rev = Array(130 * 502).fill(0x01);
+		run({
+			chunkLength: 0xFF00,
+		}, [
+			...rev, // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+		], [
+			...obs,
+			0x11, 0x02,
+		]);
+	});
+
+	describe('chunk length - one extra byte', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		let rev = Array(130 * 502).fill(0x01);
+		run({
+			chunkLength: 0xFF00,
+		}, [
+			...rev, // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			0x02,
+		], [
+			...obs,
+			0x11, 0x02, // this RLE could should break at the boundary
+			0x80, 0x02,
+		]);
+	});
+
+	describe('chunk length - two extra bytes', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		let rev = Array(130 * 502).fill(0x01);
+		run({
+			chunkLength: 0xFF00,
+		}, [
+			...rev, // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			0x02, 0x02,
+		], [
+			...obs,
+			0x11, 0x02, // this RLE could should break at the boundary
+			0x81, 0x02, 0x02,
+		]);
+	});
+
+	describe('chunk length - one extra byte, crossing boundary, no truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x12, 0x02, // crosses boundary
+			0x80, 0x03, // should overwrite byte that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			//0x02, // should get overwritten
+			0x03,
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+	describe('chunk length - one extra byte, crossing boundary, truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x12, 0x02, // crosses boundary
+			0x80, 0x03, // should overwrite byte that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			//0x02, // should get overwritten
+			0x03,
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+				outputLength: 0xFF01,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+	describe('chunk length - two extra bytes, crossing boundary, no truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x13, 0x02, // crosses boundary
+			0x80, 0x03, // should overwrite byte that crossed boundary and drop following byte
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			/*0x02*/0x03, 0x02, // first byte should get overwritten
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+	describe('chunk length - two extra bytes, crossing boundary, truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x13, 0x02, // crosses boundary
+			0x80, 0x03, // should overwrite byte that crossed boundary and drop following byte
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			//0x02, 0x02, // first byte should get overwritten, second truncated
+			0x03,
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+				outputLength: 0xFF00 + 1,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+	describe('chunk length - 15 extra bytes, crossing boundary, no truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x11 + 15, 0x02, // crosses boundary
+			0x81, 0x03, 0x03, // should overwrite bytes that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			// Past boundary
+			/*0x02*/0x03, /*0x02*/0x03, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+	describe('chunk length - 15 extra bytes, crossing boundary, truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x11 + 15, 0x02, // crosses boundary
+			0x81, 0x03, 0x03 // should overwrite byte that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			//0x02 * [15] that will get overwritten/truncated
+			0x03, 0x03,
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+				outputLength: 0xFF00 + 2,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+
+	describe('chunk length - 16 extra bytes, crossing boundary, no truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x11 + 16, 0x02, // crosses boundary
+			0x81, 0x03, 0x03, // should overwrite bytes that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			// Past boundary
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			// 16 bytes past boundary will be kept
+			0x03, 0x03,
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+	describe('chunk length - 16 extra bytes, crossing boundary, truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x11 + 16, 0x02, // crosses boundary
+			0x81, 0x03, 0x03 // should overwrite byte that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			// Past boundary
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			// 16 bytes past boundary will be kept
+			0x03, 0x03,
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+				outputLength: 0xFF00 + 16 + 2,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+
+	describe('chunk length - 17 extra bytes, crossing boundary, no truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x11 + 17, 0x02, // crosses boundary
+			0x81, 0x03, 0x03, // should overwrite bytes that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			// Past boundary
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			// 16 bytes past boundary will be kept
+			/*0x02*/0x03, 0x03, // 17th byte will be overwritten
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
+	describe('chunk length - 17 extra bytes, crossing boundary, truncate', function() {
+		let obs = [];
+		for (let i = 0; i < 502; i++) {
+			obs.push(0x7F); // repeat 130 times
+			obs.push(0x01); // value to repeat
+		}
+		obs.push(...[
+			0x11 + 17, 0x02, // crosses boundary
+			0x81, 0x03, 0x03 // should overwrite byte that crossed boundary
+		]);
+
+		let rev = [
+			...Array(130 * 502).fill(0x01), // 0xFEEC length
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, // 0xFEFF length
+			0x02, // 0xFF00 length
+			// Past boundary
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+			// 16 bytes past boundary will be kept
+			/*0x02*/0x03, 0x03, // 17th byte will be overwritten
+		];
+
+		const b_rev = Uint8Array.from(rev);
+		const b_obs = Uint8Array.from(obs);
+
+		it('decodes correctly', function() {
+			const contentRevealed = handler.reveal(b_obs, {
+				chunkLength: 0xFF00,
+				outputLength: 0xFF00 + 17 + 2,
+			});
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
+	});
+
 });
