@@ -26,6 +26,8 @@ import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
 import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
 
+import { pad_chunked } from './index.js';
+
 export default class Compress_RLE_CComic
 {
 	static metadata() {
@@ -33,21 +35,20 @@ export default class Compress_RLE_CComic
 			id: FORMAT_ID,
 			title: 'Captain Comic RLE compression',
 			options: {
-				outputLength: 'Stop revealing when this number of output bytes have '
-					+ 'been produced (default read all input data until EOF)',
-				cbLenRead: 'Function called by reveal() with the number of bytes read '
-					+ 'from the input when outputLength has been reached on the output',
 			},
 		};
 	}
 
-	static reveal(content, options = {})
+	static reveal(content)
 	{
 		const debug = g_debug.extend('reveal');
-		const outputLength = parseInt(options.outputLength) || 0;
 
 		let input = new RecordBuffer(content);
-		let output = new RecordBuffer(content.length * 1.5);
+
+		const lenPlane = input.read(RecordType.int.u16le);
+		const outputLength = lenPlane * 4;
+
+		let output = new RecordBuffer(outputLength);
 
 		const getByte = input.read.bind(input, RecordType.int.u8);
 		const putByte = output.write.bind(output, RecordType.int.u8);
@@ -76,16 +77,28 @@ export default class Compress_RLE_CComic
 			}
 		}
 
-		// Return the number of bytes read from the input.
-		if (options.cbLenRead) {
-			options.cbLenRead(input.getPos());
-		}
-
 		return output.getU8();
 	}
 
 	static obscure(content) {
-		const debug = g_debug.extend('obscure');
+		const lenPlane = content.length / 4;
+
+		let rle = pad_chunked.obscure(content, {
+			length: lenPlane, // one plane at a time
+			callback: chunk => this.obscureBlock(chunk),
+		});
+
+		// Write the plane length.
+		let output = new RecordBuffer(rle.length + 2);
+		output.write(RecordType.int.u16le, lenPlane);
+
+		output.put(rle);
+
+		return output.getU8();
+	}
+
+	static obscureBlock(content) {
+		const debug = g_debug.extend('obscureBlock');
 
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length);
@@ -97,8 +110,8 @@ export default class Compress_RLE_CComic
 
 		let pending = 1;
 		function flushPending() {
-			// This byte is different to the last, write out the cached run.
-			if (pending > 1) {
+			// This word is different to the last, write out the cached run.
+			if (pending > 2) {
 				if (diff.length) {
 					// Write out the escaped values first.
 					flushDiff();
@@ -117,7 +130,7 @@ export default class Compress_RLE_CComic
 			// Had different bytes but now have repeated ones.  Write out all the
 			// different bytes ready for the repeated ones.
 			while (diff.length) {
-				let len = Math.min(diff.length, 127);
+				let len = Math.min(diff.length, 128);
 				putByte(len);
 				for (let i = 0; i < len; i++) {
 					putByte(diff[i]);
