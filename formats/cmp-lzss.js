@@ -54,7 +54,7 @@ export default class Compress_LZSS
 					'stored in the high-order bits of the second backreference byte. ' +
 					'If this is false, then the little-endian interpretation of the ' +
 					'backreference byte pair will have the offset field split into ' +
-					'two chunks within the length field in the middle.',
+					'two chunks with the length field in the middle.',
 			},
 		};
 	}
@@ -65,7 +65,7 @@ export default class Compress_LZSS
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
 		options.prefillByte = parseInt(options.prefillByte || 0x20);
-		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits || true);
+		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits);
 
 		if (options.sizeLength > 8) {
 			throw ('Error: backreference length fields longer than 8 bits are not supported.');
@@ -229,7 +229,7 @@ export default class Compress_LZSS
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
 		options.prefillByte = parseInt(options.prefillByte || 0x20);
-		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits || true);
+		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits);
 
 		const sizeOffset = (16 - options.sizeLength);
 		const windowSize = (1 << sizeOffset);
