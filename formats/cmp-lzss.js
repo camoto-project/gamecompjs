@@ -47,14 +47,21 @@ export default class Compress_LZSS
 			id: FORMAT_ID,
 			title: 'LZSS compression',
 			options: {
-				sizeLength: 'Size of the backreference length field, in bits (4)',
-				minLen: 'Minimum length of a backreference string, in bytes (3)',
-				prefillByte: 'Byte used to prefill the sliding window buffer (0x20)',
+				sizeLength: 'Size of the backreference length field, in bits [4]',
+				minLen: 'Minimum length of a backreference string, in bytes [3]',
+				prefillByte: 'Byte used to prefill the sliding window buffer [0x20]',
 				lengthFieldInHighBits: 'Whether the backreference length field is ' +
 					'stored in the high-order bits of the second backreference byte. ' +
 					'If this is false, then the little-endian interpretation of the ' +
 					'backreference byte pair will have the offset field split into ' +
-					'two chunks with the length field in the middle.',
+					'two chunks with the length field in the middle [false]',
+				windowStartAt0: 'true to start at the beginning of the window, false '
+					+ 'to start at the end of the window (false)',
+				splitMethod: 'How to split 16-bit code into offset+length: '
+					+ '0 = big (AB CD -> ABC+D), '
+					+ '1 = little (AB CD -> CDA+B), '
+					+ '2 = big-byte (AB CD -> CAB+D), '
+					+ '3 = little-byte (AB CD -> ACD+B) [2]',
 			},
 		};
 	}
@@ -64,17 +71,27 @@ export default class Compress_LZSS
 
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
-		options.prefillByte = parseInt(options.prefillByte || 0x20);
+		if (options.prefillByte !== 0) {
+			options.prefillByte = parseInt(options.prefillByte || 0x20);
+		}
 		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits);
+		options.windowStartAt0 = parseBool(options.windowStartAt0);
+		if (options.splitMethod !== 0) {
+			options.splitMethod = parseInt(options.splitMethod || 2);
+		}
 
 		if (options.sizeLength > 8) {
-			throw ('Error: backreference length fields longer than 8 bits are not supported.');
+			throw new Error('Backreference length fields longer than 8 bits are not supported.');
+		}
+
+		if ((options.splitMethod < 0) || (options.splitMethod > 3)) {
+			throw new Error(`Invalid splitMethod ${options.splitMethod}.`);
 		}
 
 		const sizeOffset = (16 - options.sizeLength);
 		const windowSize = (1 << sizeOffset);
 		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
-		const windowStartPos = windowSize - maxBackrefSize;
+		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
 
 		// 2 bytes for each of 8 backrefs, plus flag byte
 		const minEncodedBytesPer8Chunks = (8 * 2) + 1;
@@ -89,84 +106,68 @@ export default class Compress_LZSS
 		let windowPos = windowStartPos;
 		let slidingWindow = new Array(windowSize).fill(options.prefillByte);
 
-		const getByte = input.read.bind(input, RecordType.int.u8);
-		const putByte = output.write.bind(output, RecordType.int.u8);
-
-		let result = true;
-
-		while (result && (input.distFromEnd() > 0)) {
+		while (input.distFromEnd() > 0) {
 
 			let flagBitPos = 0;
-			const flagByte = getByte();
+			const flagByte = input.read(RecordType.int.u8);
 
-			while (result && (flagBitPos < 8)) {
+			while (flagBitPos < 8) {
 
 				// if the flag indicates that this chunk is a literal...
 				if ((flagByte & (1 << flagBitPos)) != 0) {
-					if (input.distFromEnd() > 0) {
+					if (input.distFromEnd() <= 0) break;
 
-						const literal = getByte();
-						putByte(literal);
-						slidingWindow[windowPos++] = literal;
-						if (windowPos >= windowSize) {
-							windowPos = 0;
-						}
-					} else {
-						result = false;
-					}
+					const literal = input.read(RecordType.int.u8);
+					output.write(RecordType.int.u8, literal);
+					slidingWindow[windowPos++] = literal;
+					windowPos %= windowSize;
+
 				} else { // otherwise, this chunk is a backreference
 					// verify that there are enough bytes left in the input stream to
 					// describe the backreference
-					if (input.distFromEnd() >= 2) {
-						let brByte0 = getByte();
-						let brByte1 = getByte();
+					if (input.distFromEnd() < 2) break;
 
+					// Use bit 1 in options.splitMethod to control big or little endian.
+					let brWord = input.read((options.splitMethod & 1) ? RecordType.int.u16le : RecordType.int.u16be);
+
+					if (options.splitMethod & 2) {
+						// Byte endian. (0xCDAB -> 0xACDB)
 						// the first (low-order) byte will always contain the low-order
 						// bits from the offset into the sliding window
-						var backrefOffset = brByte0;
-						var backrefSize;
+						brWord = ((brWord & 0xFF00) >> 4)
+							| ((brWord & 0x00F0) << 8)
+							| (brWord & 0x000F);
+					}
 
-						if (options.lengthFieldInHighBits) {
+					// Calculate the shifts and masks needed to extract the length and
+					// offset values from the word we just read.
+					let sizeShift, offShift;
+					if (options.lengthFieldInHighBits) {
+						sizeShift = 16 - options.sizeLength;
+						offShift = 0;
+					} else {
+						sizeShift = 0;
+						offShift = options.sizeLength;
+					}
+					const sizeMask = (1 << options.sizeLength) - 1;
+					const offMask = (1 << (16 - options.sizeLength)) - 1;
 
-							backrefSize = brByte1 >> (8 - options.sizeLength);
+					let backrefOffset = (brWord >> offShift) & offMask;
+					let backrefSize = (brWord >> sizeShift) & sizeMask;
 
-							// the high-order bits of the offset are in the lower portion of
-							// this byte, so mask off the other bits and shift them up by a
-							// full byte before ORing them in
-							var backrefOffsetHighMask = (1 << (8 - options.sizeLength)) - 1;
-							var backrefOffsetHigh = (brByte1 & backrefOffsetHighMask) << 8;
-							backrefOffset |= backrefOffsetHigh;
+					backrefSize += options.minLen;
 
-						} else {
+					// copy the bytes from the sliding window to the output, and also
+					// to the end of the sliding window
+					for (var brByteIdx = 0; brByteIdx < backrefSize; brByteIdx++) {
 
-							backrefSize = brByte1 & ((1 << options.sizeLength) - 1);
+						const curByte = slidingWindow[backrefOffset];
+						output.write(RecordType.int.u8, curByte);
 
-							// the high-order bits of the offset are in the higher portion of
-							// this byte
-							backrefOffset |= ((brByte1 << (8 - options.sizeLength)) & 0xFF00);
-						}
+						slidingWindow[windowPos] = curByte;
 
-						backrefSize += options.minLen;
-
-						// copy the bytes from the sliding window to the output, and also
-						// to the end of the sliding window
-						for (var brByteIdx = 0; brByteIdx < backrefSize; brByteIdx++) {
-
-							const curByte = slidingWindow[backrefOffset];
-							putByte(curByte);
-
-							if (++backrefOffset >= windowSize) {
-								backrefOffset = 0;
-							}
-
-							slidingWindow[windowPos] = curByte;
-							if (++windowPos >= windowSize) {
-								windowPos = 0;
-							}
-						}
-					} // end check for sufficient data to cover backref
-					else {
-						result = false;
+						++backrefOffset; backrefOffset %= windowSize;
+						++windowPos; windowPos %= windowSize;
 					}
 				}
 
@@ -194,10 +195,11 @@ export default class Compress_LZSS
 				let searchIsWithinSourceStrA =
 					((searchPos >= r_inputPos) && (searchPos < (r_inputPos + maxMatchLength)));
 
-				let searchIsWithinSourceStrB = (r_inputPos >= (bufSize - maxMatchLength));
-				searchIsWithinSourceStrB = searchIsWithinSourceStrB && (searchPos <= r_inputPos);
-				searchIsWithinSourceStrB = searchIsWithinSourceStrB &&
-					(searchPos < ((r_inputPos + maxMatchLength) & (bufSize - 1)));
+				let searchIsWithinSourceStrB =
+					(r_inputPos >= (bufSize - maxMatchLength))
+					&& (searchPos <= r_inputPos)
+					&& (searchPos < ((r_inputPos + maxMatchLength) % bufSize))
+				;
 
 				// ensure that we don't try to start matching within the same string
 				if (!searchIsWithinSourceStrA && !searchIsWithinSourceStrB) {
@@ -206,8 +208,10 @@ export default class Compress_LZSS
 
 					// match characters (up to the maximum string match length)
 					// between the cleartext/readahead section and sliding window history
-					while ((curMatchLen < maxMatchLength) &&
-						(buf[r_inputPos + curMatchLen] == buf[searchPos + curMatchLen])) {
+					while (
+						(curMatchLen < maxMatchLength)
+						&& (buf[r_inputPos + curMatchLen] == buf[searchPos + curMatchLen])
+					) {
 						curMatchLen++;
 					}
 
@@ -221,36 +225,40 @@ export default class Compress_LZSS
 				searchPos++;
 			}
 
-			return [bestMatchStartPos, bestMatchLen];
+			return { bestMatchStartPos, bestMatchLen };
 		}
 
 		const debug = g_debug.extend('obscure');
 
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
-		options.prefillByte = parseInt(options.prefillByte || 0x20);
+		if (options.prefillByte !== 0) {
+			options.prefillByte = parseInt(options.prefillByte || 0x20);
+		}
 		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits);
+		options.windowStartAt0 = parseBool(options.windowStartAt0);
+		if (options.splitMethod !== 0) {
+			options.splitMethod = parseInt(options.splitMethod || 2);
+		}
 
 		const sizeOffset = (16 - options.sizeLength);
 		const windowSize = (1 << sizeOffset);
 		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
-		const windowStartPos = windowSize - maxBackrefSize;
-		// LSB-aligned mask for the width of the size field
-		const sizeFieldMask = ((1 << options.sizeLength) - 1);
-		// and a mask for the hi-order bits of the offset field
-		const offsetFieldHiBitsMask = ((1 << (8 - options.sizeLength)) - 1) << 8;
+		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
 
 		// worst case is an increase in content size by 12.5% (negative compression)
 		let output = new RecordBuffer(content.length * 1.13);
-		const putByte = output.write.bind(output, RecordType.int.u8);
 
-		let textBuf = new Array(windowSize + maxBackrefSize - 1).fill(options.prefillByte);
+		let textBuf = new Uint8Array(windowSize + maxBackrefSize - 1).fill(options.prefillByte);
 		let r_windowInputPos = windowStartPos;
 		let inputPos = 0;
 		let chunkIndex = 0;
 		let inputStringLen = 0;
-		let s = 0;
 		let i = 0;
+
+		// s starts maxBackrefSize bytes after windowStartPos, wrapping around to
+		// the start of the window if needed.
+		let s = (windowStartPos + maxBackrefSize + windowSize) % windowSize;
 
 		// we buffer up 8 chunks at a time (a mixture of literals and backreferences)
 		// because the flags that indicate the chunk type are packed together into
@@ -261,50 +269,69 @@ export default class Compress_LZSS
 		// we'll OR-in individual flags as literals are added
 		chunkBuf.push(0);
 
-		// fill the read-ahead section
-		while ((inputStringLen < maxBackrefSize) &&
-			(inputPos < content.length)) {
-			textBuf[r_windowInputPos + inputStringLen] = content[inputStringLen++];
-			inputPos++;
-		}
+		// Fill the read buffer until it is full or the end of the data is reached.
+		const lenRead = Math.min(
+			maxBackrefSize - inputStringLen,
+			content.length - inputPos
+		);
+
+		textBuf.set(
+			// Copy this input data...
+			content.slice(inputStringLen, inputStringLen + lenRead),
+			// ...into this offset in textBuf.
+			r_windowInputPos + inputStringLen
+		);
+		inputPos += lenRead;
+		inputStringLen += lenRead;
 
 		while (inputStringLen > 0) {
 
-			let match = findMatch(r_windowInputPos, textBuf, windowSize, maxBackrefSize);
-			if (match[1] > inputStringLen) {
-				match[1] = inputStringLen;
+			let { bestMatchStartPos, bestMatchLen } =
+				findMatch(r_windowInputPos, textBuf, windowSize, maxBackrefSize);
+
+			if (bestMatchLen > inputStringLen) {
+				bestMatchLen = inputStringLen;
 			}
 
 			// if a match was found, produce a backreference in the output stream
-			if (match[1] >= options.minLen) {
+			if (bestMatchLen >= options.minLen) {
 
-				// the first byte is always the low 8 bits of the offset
-				const byte0 = match[0] & 0xFF;
-				// also capture the high bits of the offset, shifted down to be aligned to bit 0
-				const offsetFieldHiBits = ((match[0] & offsetFieldHiBitsMask) >> 8);
-
-				// the second byte contains the size field; we'll place it
-				// in the low-order bits for now, and shift it up during the
-				// next step (if necessary)
-				let byte1 = ((match[1] - options.minLen) & sizeFieldMask);
-
+				let sizeShift, offShift;
 				if (options.lengthFieldInHighBits) {
-					// the 'length' field is in the high bits of the second byte,
-					// so shift it up and OR in the rest of the offset below
-					byte1 <<= (8 - options.sizeLength);
-					byte1 |= offsetFieldHiBits;
+					sizeShift = 16 - options.sizeLength;
+					offShift = 0;
 				} else {
-					// the 'length' field is in the low bits of the second byte,
-					// so leave that field as-is and OR in the rest of the offset above
-					byte1 |= (offsetFieldHiBits << options.sizeLength);
+					sizeShift = 0;
+					offShift = options.sizeLength;
 				}
 
-				chunkBuf.push(byte0);
-				chunkBuf.push(byte1);
+				let backrefOffset = bestMatchStartPos << offShift;
+				let backrefSize = (bestMatchLen - options.minLen) << sizeShift;
+
+				const word = backrefOffset | backrefSize;
+				switch (options.splitMethod) {
+					case 0: // 0xABCD -> AB CD
+						chunkBuf.push(word >> 8);
+						chunkBuf.push(word & 0xFF);
+						break;
+					case 1: // 0xABCD -> CD AB
+						chunkBuf.push(word & 0xFF);
+						chunkBuf.push(word >> 8);
+						break;
+					case 2: // 0xABCD -> BC AD
+						chunkBuf.push((word >> 4) & 0xFF);
+						chunkBuf.push(((word >> 8) & 0xF0) | (word & 0x0F));
+						break;
+					case 3: // 0xABCD -> AD BC
+						chunkBuf.push(((word >> 8) & 0xF0) | (word & 0x0F));
+						chunkBuf.push((word >> 4) & 0xFF);
+						break;
+					default:
+						throw new Error('Unsupported splitMethod.');
+				}
 
 			} else { // otherwise, produce a literal
-
-				match[1] = 1;
+				bestMatchLen = 1;
 				// set the flag indicating that this chunk is a literal
 				chunkBuf[0] |= (1 << chunkIndex);
 				chunkBuf.push(textBuf[r_windowInputPos]);
@@ -313,9 +340,8 @@ export default class Compress_LZSS
 			// once we've finished 8 chunks, write them to the output
 			if (++chunkIndex >= 8) {
 
-				for (let i = 0; i < chunkBuf.length; i++) {
-					putByte(chunkBuf[i]);
-				}
+				const binaryChunkBuf = new Uint8Array(chunkBuf);
+				output.put(binaryChunkBuf);
 
 				chunkIndex = 0;
 				chunkBuf.length = 0;
@@ -324,7 +350,7 @@ export default class Compress_LZSS
 
 			// replace the matched parts of the string
 			i = 0;
-			while ((i < match[1]) && (inputPos < content.length)) {
+			while ((i < bestMatchLen) && (inputPos < content.length)) {
 
 				textBuf[s] = content[inputPos];
 				if (s < (maxBackrefSize - 1)) {
@@ -338,18 +364,17 @@ export default class Compress_LZSS
 				inputPos++;
 			}
 
-			while (i++ < match[1]) {
-				s = (s + 1) & (windowSize - 1);
-				r_windowInputPos = (r_windowInputPos + 1) & (windowSize - 1);
-				inputStringLen--;
-			}
+			const advance = bestMatchLen - i;
+			i += advance;
+			inputStringLen -= advance;
+			s = (s + advance) & (windowSize - 1);
+			r_windowInputPos = (r_windowInputPos + advance) & (windowSize - 1);
 		}
 
 		// if there's a partial set of eight chunks, write it to the output
 		if (chunkIndex > 0) {
-			for (let i = 0; i < chunkBuf.length; i++) {
-				putByte(chunkBuf[i]);
-			}
+			const binaryChunkBuf = new Uint8Array(chunkBuf);
+			output.put(binaryChunkBuf);
 		}
 
 		return output.getU8();
