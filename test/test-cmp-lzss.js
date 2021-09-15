@@ -107,6 +107,14 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 					TestUtil.buffersEqual(u8input, contentRevealed);
 				});
 
+				// Confirm the lookback is limited to the maximum length.
+				it(`compressible data larger than the maximum length`, function() {
+					const ct = new Uint8Array(32).fill(65);
+					const contentObscured = handler.obscure(ct, p.options);
+					const contentRevealed = handler.reveal(contentObscured, p.options);
+					TestUtil.buffersEqual(ct, contentRevealed);
+				});
+
 			});
 		});
 	});
