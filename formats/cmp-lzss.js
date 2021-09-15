@@ -7,6 +7,7 @@
  * A portion of this implementation is based on Andy McFadden's annotated
  * LZSS compressor source, which in turn is based on Haruhiko Okumura's code.
  *
+ * Copyright (C) 2021 Colin Bourassa
  * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
