@@ -28,10 +28,21 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 
 	let content = {};
 	let presets = {
+		'default': {
+			title: 'default',
+			options: {
+				// defaults
+			},
+		},
 		papyrus: {
 			title: 'Papyrus',
 			options: {
-				// defaults
+				sizeLength: 4,
+				minLen: 3,
+				prefillByte: 0x20,
+				lengthFieldInHighBits: true,
+				// [default] windowStartAt0: false,
+				// [default] splitMethod: 2,
 			},
 		},
 		lostvikings: {
