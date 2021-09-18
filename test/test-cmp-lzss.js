@@ -34,13 +34,13 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				// defaults
 			},
 		},
-		papyrus: {
-			title: 'Papyrus',
+		indy500: {
+			title: 'Indy 500',
 			options: {
 				sizeLength: 4,
 				minLen: 3,
 				prefillByte: 0x20,
-				lengthFieldInHighBits: true,
+				lengthFieldInHighBits: false,
 				// [default] windowStartAt0: false,
 				// [default] splitMethod: 2,
 			},
@@ -56,10 +56,22 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				splitMethod: 1,
 			},
 		},
+		papyrus: {
+			title: 'Papyrus',
+			options: {
+				sizeLength: 4,
+				minLen: 3,
+				prefillByte: 0x20,
+				lengthFieldInHighBits: true,
+				// [default] windowStartAt0: false,
+				// [default] splitMethod: 2,
+			},
+		},
 	};
 	before('load test data from local filesystem', function() {
 		content = testutil.loadContent(handler, [
 			'default',
+			'indy500',
 			'lostvikings',
 			'papyrus',
 		]);
