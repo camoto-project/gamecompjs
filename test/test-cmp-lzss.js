@@ -89,6 +89,21 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
+
+		// Some formats will go back beyond the start of the window for 0x00 bytes.
+		// Confirm 1) this works, 2) the prefill byte is used, and 3) the prefill
+		// byte still works when it's zero.
+		it(`works with lookbacks beyond start of new window`, function() {
+			const b_obs = Uint8Array.from([
+				0xFE, 0xFD, 0x0F, 0x01,
+			]);
+			const b_rev = Uint8Array.from([
+				0x00, 0x00, 0x00, 0x01,
+			]);
+
+			const contentRevealed = handler.reveal(b_obs, presets.lostvikings.options);
+			TestUtil.buffersEqual(b_rev, contentRevealed);
+		});
 	});
 
 	describe('obscure()', function() {
@@ -141,4 +156,5 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			});
 		});
 	});
+
 });
