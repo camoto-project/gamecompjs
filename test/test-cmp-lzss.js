@@ -40,9 +40,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				sizeLength: 4,
 				minLen: 3,
 				prefillByte: 0x20,
-				lengthFieldInHighBits: false,
 				// [default] windowStartAt0: false,
-				// [default] splitMethod: 2,
+				// [default] littleEndian: false,
+				lengthHigh: false,
+				offsetRotate: 8,
 			},
 		},
 		lostvikings: {
@@ -50,21 +51,23 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			options: {
 				sizeLength: 4,
 				minLen: 3,
-				prefillByte: 0,
-				lengthFieldInHighBits: true,
+				// [default] prefillByte: 0x00,
 				windowStartAt0: true,
-				splitMethod: 1,
+				littleEndian: true,
+				lengthHigh: true,
+				// [default] offsetRotate: 0,
 			},
 		},
-		papyrus: {
-			title: 'Papyrus',
+		nomad: {
+			title: 'Nomad',
 			options: {
 				sizeLength: 4,
 				minLen: 3,
 				prefillByte: 0x20,
-				lengthFieldInHighBits: true,
 				// [default] windowStartAt0: false,
-				// [default] splitMethod: 2,
+				littleEndian: true,
+				lengthHigh: true,
+				// [default] offsetRotate: 0,
 			},
 		},
 	};
@@ -73,7 +76,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			'default',
 			'indy500',
 			'lostvikings',
-			'papyrus',
+			'nomad',
 		]);
 	});
 

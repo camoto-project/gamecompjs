@@ -41,6 +41,34 @@ function parseBool(s) {
 	return !!s;
 }
 
+/**
+ * Explanation of options:
+ *
+ * The length/offset code is read as a single 16-bit integer, which is then
+ * split into the separate length and offset values.  How this split happens is
+ * controlled by multiple options.
+ *
+ * Assuming the two bytes are AB followed by CD (i.e. a big-endian value 0xABCD)
+ * then decoding that into length+offset happens as follows:
+ *
+ * Split | lengthHigh | bigEndian | offsetRotate
+ * ------+------------+-----------+-------------
+ * ABC+D | false      | true      | 0
+ * A+BCD | true       | true      | 0
+ * CDA+B | false      | false     | 0
+ * C+DAB | true       | false     | 0
+ * BCA+D | false      | true      | 4
+ * A+CDB | true       | true      | 4
+ * DAC+B | false      | false     | 4
+ * C+ABD | true       | false     | 4
+ * CAB+D | false      | true      | 8
+ * A+DBC | true       | true      | 8
+ * ACD+B | false      | false     | 8
+ * C+BDA | true       | false     | 8
+ *
+ * Note that here, the 12-bit value in the "split" column is the LZSS offset,
+ * and the 4-bit value is the LZSS length/size.
+ */
 export default class Compress_LZSS
 {
 	static metadata() {
@@ -50,19 +78,16 @@ export default class Compress_LZSS
 			options: {
 				sizeLength: 'Size of the backreference length field, in bits [4]',
 				minLen: 'Minimum length of a backreference string, in bytes [3]',
-				prefillByte: 'Byte used to prefill the sliding window buffer [0x20]',
-				lengthFieldInHighBits: 'Whether the backreference length field is ' +
-					'stored in the high-order bits of the second backreference byte. ' +
-					'If this is false, then the little-endian interpretation of the ' +
-					'backreference byte pair will have the offset field split into ' +
-					'two chunks with the length field in the middle [false]',
+				prefillByte: 'Byte used to prefill the sliding window buffer [0x00]',
 				windowStartAt0: 'true to start at the beginning of the window, false '
 					+ 'to start at the end of the window (false)',
-				splitMethod: 'How to split 16-bit code into offset+length: '
-					+ '0 = big (AB CD -> ABC+D), '
-					+ '1 = little (AB CD -> CDA+B), '
-					+ '2 = big-byte (AB CD -> CAB+D), '
-					+ '3 = little-byte (AB CD -> ACD+B) [2]',
+				littleEndian: 'Endian of 16-bit offset+length value: '
+					+ 'true = little, false = big [false]',
+				lengthHigh: 'Whether the backreference length field is stored in the '
+					+ 'upper (most significant) bits of the code (true) or the lower '
+					+ 'bits. [false]',
+				offsetRotate: 'How many bits to rotate the backreference offset '
+					+ 'field [0]',
 			},
 		};
 	}
@@ -72,24 +97,17 @@ export default class Compress_LZSS
 
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
-		if (options.prefillByte !== 0) {
-			options.prefillByte = parseInt(options.prefillByte || 0x20);
-		}
-		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits);
+		options.prefillByte = parseInt(options.prefillByte || 0x00);
 		options.windowStartAt0 = parseBool(options.windowStartAt0);
-		if (options.splitMethod !== 0) {
-			options.splitMethod = parseInt(options.splitMethod || 2);
-		}
+		options.littleEndian = parseBool(options.littleEndian);
+		options.lengthHigh = parseBool(options.lengthHigh);
+		options.offsetRotate = parseInt(options.offsetRotate || 0);
 
 		if (options.sizeLength > 8) {
 			throw new Error('Backreference length fields longer than 8 bits are not supported.');
 		}
 
-		if ((options.splitMethod < 0) || (options.splitMethod > 3)) {
-			throw new Error(`Invalid splitMethod ${options.splitMethod}.`);
-		}
-
-		const sizeOffset = (16 - options.sizeLength);
+		const sizeOffset = 16 - options.sizeLength;
 		const windowSize = (1 << sizeOffset);
 		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
 		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
@@ -101,11 +119,29 @@ export default class Compress_LZSS
 		const maxTheoreticalCompressionRatio =
 			Math.ceil(maxDecodedBytesPer8Chunks / minEncodedBytesPer8Chunks);
 
+		// Calculate the shifts and masks needed to extract the length and
+		// offset values from the word we just read.
+		let sizeShift, offShift;
+		if (options.lengthHigh) {
+			sizeShift = sizeOffset;
+			offShift = 0;
+		} else {
+			sizeShift = 0;
+			offShift = options.sizeLength;
+		}
+		const sizeMask = (1 << options.sizeLength) - 1;
+		const offMask = (1 << sizeOffset) - 1;
+
 		let input = new RecordBuffer(content);
 		let output = new RecordBuffer(content.length * maxTheoreticalCompressionRatio);
 
 		let windowPos = windowStartPos;
 		let slidingWindow = new Array(windowSize).fill(options.prefillByte);
+
+		const fnReadWord = input.read.bind(
+			input,
+			options.littleEndian ? RecordType.int.u16le : RecordType.int.u16be
+		);
 
 		while (input.distFromEnd() > 0) {
 
@@ -120,47 +156,37 @@ export default class Compress_LZSS
 
 					const literal = input.read(RecordType.int.u8);
 					output.write(RecordType.int.u8, literal);
+
 					slidingWindow[windowPos++] = literal;
 					windowPos %= windowSize;
 
 				} else { // otherwise, this chunk is a backreference
+
 					// verify that there are enough bytes left in the input stream to
 					// describe the backreference
 					if (input.distFromEnd() < 2) break;
 
-					// Use bit 1 in options.splitMethod to control big or little endian.
-					let brWord = input.read((options.splitMethod & 1) ? RecordType.int.u16le : RecordType.int.u16be);
-
-					if (options.splitMethod & 2) {
-						// Byte endian. (0xCDAB -> 0xACDB)
-						// the first (low-order) byte will always contain the low-order
-						// bits from the offset into the sliding window
-						brWord = ((brWord & 0xFF00) >> 4)
-							| ((brWord & 0x00F0) << 8)
-							| (brWord & 0x000F);
-					}
-
-					// Calculate the shifts and masks needed to extract the length and
-					// offset values from the word we just read.
-					let sizeShift, offShift;
-					if (options.lengthFieldInHighBits) {
-						sizeShift = 16 - options.sizeLength;
-						offShift = 0;
-					} else {
-						sizeShift = 0;
-						offShift = options.sizeLength;
-					}
-					const sizeMask = (1 << options.sizeLength) - 1;
-					const offMask = (1 << (16 - options.sizeLength)) - 1;
+					const brWord = fnReadWord();
 
 					let backrefOffset = (brWord >> offShift) & offMask;
 					let backrefSize = (brWord >> sizeShift) & sizeMask;
 
 					backrefSize += options.minLen;
 
+					// Rotate the offset by the given number of bits, e.g. 0xABC rotated
+					// by 4 = BCA.
+					if (options.offsetRotate) {
+						backrefOffset =
+							(
+								(backrefOffset << options.offsetRotate)
+								| (backrefOffset >> (sizeOffset - options.offsetRotate))
+							) & offMask
+						;
+					}
+
 					// copy the bytes from the sliding window to the output, and also
 					// to the end of the sliding window
-					for (var brByteIdx = 0; brByteIdx < backrefSize; brByteIdx++) {
+					for (let brByteIdx = 0; brByteIdx < backrefSize; brByteIdx++) {
 
 						const curByte = slidingWindow[backrefOffset];
 						output.write(RecordType.int.u8, curByte);
@@ -233,16 +259,13 @@ export default class Compress_LZSS
 
 		options.sizeLength = parseInt(options.sizeLength || 4);
 		options.minLen = parseInt(options.minLen || 3);
-		if (options.prefillByte !== 0) {
-			options.prefillByte = parseInt(options.prefillByte || 0x20);
-		}
-		options.lengthFieldInHighBits = parseBool(options.lengthFieldInHighBits);
+		options.prefillByte = parseInt(options.prefillByte || 0x00);
 		options.windowStartAt0 = parseBool(options.windowStartAt0);
-		if (options.splitMethod !== 0) {
-			options.splitMethod = parseInt(options.splitMethod || 2);
-		}
+		options.littleEndian = parseBool(options.littleEndian);
+		options.lengthHigh = parseBool(options.lengthHigh);
+		options.offsetRotate = parseInt(options.offsetRotate || 0);
 
-		const sizeOffset = (16 - options.sizeLength);
+		const sizeOffset = 16 - options.sizeLength;
 		const windowSize = (1 << sizeOffset);
 		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
 		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
@@ -260,6 +283,17 @@ export default class Compress_LZSS
 		// s starts maxBackrefSize bytes after windowStartPos, wrapping around to
 		// the start of the window if needed.
 		let s = (windowStartPos + maxBackrefSize + windowSize) % windowSize;
+
+		let sizeShift, offShift;
+		if (options.lengthHigh) {
+			sizeShift = sizeOffset;
+			offShift = 0;
+		} else {
+			sizeShift = 0;
+			offShift = options.sizeLength;
+		}
+
+		const offMask = (1 << sizeOffset) - 1;
 
 		// we buffer up 8 chunks at a time (a mixture of literals and backreferences)
 		// because the flags that indicate the chunk type are packed together into
@@ -297,38 +331,29 @@ export default class Compress_LZSS
 			// if a match was found, produce a backreference in the output stream
 			if (bestMatchLen >= options.minLen) {
 
-				let sizeShift, offShift;
-				if (options.lengthFieldInHighBits) {
-					sizeShift = 16 - options.sizeLength;
-					offShift = 0;
-				} else {
-					sizeShift = 0;
-					offShift = options.sizeLength;
-				}
-
-				let backrefOffset = bestMatchStartPos << offShift;
+				let backrefOffset = bestMatchStartPos;
 				let backrefSize = (bestMatchLen - options.minLen) << sizeShift;
 
+				// Rotate the offset by the given number of bits, e.g. 0xABC rotated
+				// by 4 = CAB.  This is the opposite direction to when we read it.
+				if (options.offsetRotate) {
+					backrefOffset =
+						(
+							(backrefOffset >> options.offsetRotate)
+							| (backrefOffset << (sizeOffset - options.offsetRotate))
+						) & offMask
+					;
+				}
+
+				backrefOffset <<= offShift;
+
 				const word = backrefOffset | backrefSize;
-				switch (options.splitMethod) {
-					case 0: // 0xABCD -> AB CD
-						chunkBuf.push(word >> 8);
-						chunkBuf.push(word & 0xFF);
-						break;
-					case 1: // 0xABCD -> CD AB
-						chunkBuf.push(word & 0xFF);
-						chunkBuf.push(word >> 8);
-						break;
-					case 2: // 0xABCD -> BC AD
-						chunkBuf.push((word >> 4) & 0xFF);
-						chunkBuf.push(((word >> 8) & 0xF0) | (word & 0x0F));
-						break;
-					case 3: // 0xABCD -> AD BC
-						chunkBuf.push(((word >> 8) & 0xF0) | (word & 0x0F));
-						chunkBuf.push((word >> 4) & 0xFF);
-						break;
-					default:
-						throw new Error('Unsupported splitMethod.');
+				if (options.littleEndian) {
+					chunkBuf.push(word & 0xFF);
+					chunkBuf.push(word >> 8);
+				} else {
+					chunkBuf.push(word >> 8);
+					chunkBuf.push(word & 0xFF);
 				}
 
 			} else { // otherwise, produce a literal
