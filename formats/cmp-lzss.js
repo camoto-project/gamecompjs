@@ -27,6 +27,7 @@
 const FORMAT_ID = 'cmp-lzss';
 
 import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
+import { BitStream, BitView } from 'bit-buffer';
 import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
 
@@ -44,9 +45,9 @@ function parseBool(s) {
 /**
  * Explanation of options:
  *
- * The length/offset code is read as a single 16-bit integer, which is then
- * split into the separate length and offset values.  How this split happens is
- * controlled by multiple options.
+ * In byte mode (bitstream = false), the length/offset code is read as a single
+ * 16-bit integer, which is then split into the separate length and offset
+ * values.  How this split happens is controlled by multiple options.
  *
  * Assuming the two bytes are AB followed by CD (i.e. a big-endian value 0xABCD)
  * then decoding that into length+offset happens as follows:
@@ -71,44 +72,71 @@ function parseBool(s) {
  */
 export default class Compress_LZSS
 {
-	static metadata() {
+	static metadata()
+	{
 		return {
 			id: FORMAT_ID,
 			title: 'LZSS compression',
 			options: {
-				sizeLength: 'Size of the backreference length field, in bits [4]',
-				minLen: 'Minimum length of a backreference string, in bytes [3]',
-				prefillByte: 'Byte used to prefill the sliding window buffer [0x00]',
-				windowStartAt0: 'true to start at the beginning of the window, false '
-					+ 'to start at the end of the window (false)',
-				littleEndian: 'Endian of 16-bit offset+length value: '
-					+ 'true = little, false = big [false]',
+				bitstream: 'Embed flag bits in the stream (true) or group them into '
+					+ 'an initial byte. [false]',
+				invertFlag: 'If true, flag=0 is codeword, if false flag=1 is codeword '
+					+ '[false]',
 				lengthHigh: 'Whether the backreference length field is stored in the '
 					+ 'upper (most significant) bits of the code (true) or the lower '
 					+ 'bits. [false]',
+				littleEndian: 'Endian of 16-bit offset+length value: '
+					+ 'true = little, false = big [false]',
+				minDistance: 'Minimum distance of a backreference string (when '
+					+ 'distance value is 0), in bytes [0]',
+				minLen: 'Minimum length of a backreference string (when length value '
+					+ 'is 0), in bytes [3]',
 				offsetRotate: 'How many bits to rotate the backreference offset '
 					+ 'field [0]',
+				prefillByte: 'Byte used to prefill the sliding window buffer [0x00]',
+				relativeDistance: 'Backreference distance is relative to current '
+					+ 'window position (true) or to the start of the sliding window '
+					+ '[false]',
+				sizeDistance: 'Size of the backreference distance field, in bits [12]',
+				sizeLength: 'Size of the backreference length field, in bits [4]',
+				windowStartAt0: 'true to start at the beginning of the window, false '
+					+ 'to start at the end of the window (false)',
 			},
 		};
 	}
 
-	static reveal(content, options = {}) {
+	static reveal(content, options = {})
+	{
 		const debug = g_debug.extend('reveal');
 
-		options.sizeLength = parseInt(options.sizeLength || 4);
-		options.minLen = parseInt(options.minLen || 3);
-		options.prefillByte = parseInt(options.prefillByte || 0x00);
-		options.windowStartAt0 = parseBool(options.windowStartAt0);
-		options.littleEndian = parseBool(options.littleEndian);
+		options.bitstream = parseBool(options.bitstream);
+		options.invertFlag = parseBool(options.invertFlag);
 		options.lengthHigh = parseBool(options.lengthHigh);
+		options.littleEndian = parseBool(options.littleEndian);
+		options.minDistance = parseInt(options.minDistance || 0);
+		// minLen can't be 0.
+		options.minLen = parseInt(options.minLen || 3);
 		options.offsetRotate = parseInt(options.offsetRotate || 0);
+		options.prefillByte = parseInt(options.prefillByte || 0x00);
+		options.relativeDistance = parseBool(options.relativeDistance);
+		// sizeDistance can't be 0.
+		options.sizeDistance = parseInt(options.sizeDistance || 12);
+		// sizeLength can't be 0.
+		options.sizeLength = parseInt(options.sizeLength || 4);
+		options.windowStartAt0 = parseBool(options.windowStartAt0);
 
-		if (options.sizeLength > 8) {
-			throw new Error('Backreference length fields longer than 8 bits are not supported.');
+		if (!options.bitstream) { // byte mode
+			if (options.sizeLength > 8) {
+				throw new Error('Backreference length fields longer than 8 bits are '
+					+ 'not supported in byte mode.');
+			}
+			if (options.sizeLength + options.sizeDistance != 16) {
+				throw new Error('Backreference length + distance fields must total '
+					+ '16 bits in byte mode.');
+			}
 		}
 
-		const sizeOffset = 16 - options.sizeLength;
-		const windowSize = (1 << sizeOffset);
+		const windowSize = (1 << options.sizeDistance);
 		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
 		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
 
@@ -119,93 +147,160 @@ export default class Compress_LZSS
 		const maxTheoreticalCompressionRatio =
 			Math.ceil(maxDecodedBytesPer8Chunks / minEncodedBytesPer8Chunks);
 
+		let output = new RecordBuffer(content.length * maxTheoreticalCompressionRatio);
+
 		// Calculate the shifts and masks needed to extract the length and
 		// offset values from the word we just read.
 		let sizeShift, offShift;
 		if (options.lengthHigh) {
-			sizeShift = sizeOffset;
+			sizeShift = options.sizeDistance;
 			offShift = 0;
 		} else {
 			sizeShift = 0;
 			offShift = options.sizeLength;
 		}
 		const sizeMask = (1 << options.sizeLength) - 1;
-		const offMask = (1 << sizeOffset) - 1;
-
-		let input = new RecordBuffer(content);
-		let output = new RecordBuffer(content.length * maxTheoreticalCompressionRatio);
+		const offMask = (1 << options.sizeDistance) - 1;
 
 		let windowPos = windowStartPos;
 		let slidingWindow = new Array(windowSize).fill(options.prefillByte);
 
-		const fnReadWord = input.read.bind(
-			input,
-			options.littleEndian ? RecordType.int.u16le : RecordType.int.u16be
-		);
+		const invert = options.invertFlag ? 1 : 0;
 
-		while (input.distFromEnd() > 0) {
+		let fnNextFlag, fnReadByte, fnReadLengthDistance, fnBitsRemaining;
+		if (options.bitstream) {
+			// Support functions for bit-level LZSS.
+			let bs = new BitStream(
+				new BitView(content.buffer, content.byteOffset, content.byteLength)
+			);
+			bs.bigEndian = !options.littleEndian;
 
-			let flagBitPos = 0;
-			const flagByte = input.read(RecordType.int.u8);
+			fnNextFlag = () => bs.readBits(1, false) ^ invert;
 
-			while (flagBitPos < 8) {
+			fnReadByte = () => bs.readBits(8, false);
 
-				// if the flag indicates that this chunk is a literal...
-				if ((flagByte & (1 << flagBitPos)) != 0) {
-					if (input.distFromEnd() <= 0) break;
+			fnReadLengthDistance = () => {
+				let sizeA, sizeB;
+				if (options.lengthHigh) {
+					sizeA = options.sizeLength;
+					sizeB = options.sizeDistance;
+				} else {
+					sizeA = options.sizeDistance;
+					sizeB = options.sizeLength;
+				}
+				return [
+					bs.readBits(sizeA, false),
+					bs.readBits(sizeB, false),
+				];
+			};
 
-					const literal = input.read(RecordType.int.u8);
-					output.write(RecordType.int.u8, literal);
+			fnBitsRemaining = () => bs.bitsLeft;
 
-					slidingWindow[windowPos++] = literal;
-					windowPos %= windowSize;
+		} else {
+			// Support functions for byte-level LZSS.
+			let input = new RecordBuffer(content);
 
-				} else { // otherwise, this chunk is a backreference
+			let flagBitPos = 8;
+			let flagByte = 0;
+			fnNextFlag = () => {
+				if (flagBitPos >= 8) {
+					flagByte = input.read(RecordType.int.u8);
+					flagBitPos = 0;
+				}
+				const f = flagByte & 1;
+				flagByte >>= 1;
+				flagBitPos++;
+				return f ^ invert;
+			};
 
-					// verify that there are enough bytes left in the input stream to
-					// describe the backreference
-					if (input.distFromEnd() < 2) break;
+			fnReadByte = () => {
+				return input.read(RecordType.int.u8);
+			};
 
-					const brWord = fnReadWord();
+			// Put this outside fnReadLengthDistance() so we avoid a conditional on
+			// each read operation.
+			const fnReadWord = input.read.bind(
+				input,
+				options.littleEndian ? RecordType.int.u16le : RecordType.int.u16be
+			);
 
-					let backrefOffset = (brWord >> offShift) & offMask;
-					let backrefSize = (brWord >> sizeShift) & sizeMask;
+			fnReadLengthDistance = () => {
+				const brWord = fnReadWord();
 
-					backrefSize += options.minLen;
+				let backrefOffset = (brWord >> offShift) & offMask;
+				let backrefSize = (brWord >> sizeShift) & sizeMask;
 
-					// Rotate the offset by the given number of bits, e.g. 0xABC rotated
-					// by 4 = BCA.
-					if (options.offsetRotate) {
-						backrefOffset =
-							(
-								(backrefOffset << options.offsetRotate)
-								| (backrefOffset >> (sizeOffset - options.offsetRotate))
-							) & offMask
-						;
-					}
+				return [
+					backrefSize,
+					backrefOffset,
+				];
+			};
 
-					// copy the bytes from the sliding window to the output, and also
-					// to the end of the sliding window
-					for (let brByteIdx = 0; brByteIdx < backrefSize; brByteIdx++) {
+			fnBitsRemaining = () => input.distFromEnd() * 8;
+		}
 
-						const curByte = slidingWindow[backrefOffset];
-						output.write(RecordType.int.u8, curByte);
+		while (fnBitsRemaining() > 0) {
 
-						slidingWindow[windowPos] = curByte;
+			const flag = fnNextFlag();
 
-						++backrefOffset; backrefOffset %= windowSize;
-						++windowPos; windowPos %= windowSize;
-					}
+			// if the flag indicates that this chunk is a backreference...
+			if (flag) {
+				// verify that there are enough bytes left in the input stream to
+				// describe the backreference
+				if (fnBitsRemaining() < 16) break;
+
+				let [ backrefSize, backrefOffset ] = fnReadLengthDistance();
+
+				// Rotate the offset by the given number of bits, e.g. 0xABC rotated
+				// by 4 = BCA.
+				if (options.offsetRotate) {
+					backrefOffset =
+						(
+							(backrefOffset << options.offsetRotate)
+							| (backrefOffset >> (options.sizeDistance - options.offsetRotate))
+						) & offMask
+					;
 				}
 
-				flagBitPos++;
+				backrefSize += options.minLen;
+				backrefOffset += options.minDistance;
+
+				if (options.relativeDistance) {
+					backrefOffset = windowSize + windowPos - backrefOffset;
+				}
+
+				// copy the bytes from the sliding window to the output, and also
+				// to the end of the sliding window
+				for (let brByteIdx = 0; brByteIdx < backrefSize; brByteIdx++) {
+					backrefOffset %= windowSize;
+
+					const curByte = slidingWindow[backrefOffset];
+					output.write(RecordType.int.u8, curByte);
+
+					slidingWindow[windowPos] = curByte;
+
+					++backrefOffset;
+					++windowPos; windowPos %= windowSize;
+				}
+
+			} else { // otherwise, this chunk is a literal
+				if (fnBitsRemaining() < 8) break;
+
+				const literal = fnReadByte();
+				output.write(RecordType.int.u8, literal);
+
+				slidingWindow[windowPos++] = literal;
+				windowPos %= windowSize;
 			}
+
 		}
 
 		return output.getU8();
 	}
 
-	static obscure(content, options = {}) {
+	static obscure(content, options = {})
+	{
+		const debug = g_debug.extend('obscure');
 
 		function findMatch(r_inputPos, buf, bufSize, maxMatchLength) {
 
@@ -255,18 +350,23 @@ export default class Compress_LZSS
 			return { bestMatchStartPos, bestMatchLen };
 		}
 
-		const debug = g_debug.extend('obscure');
-
-		options.sizeLength = parseInt(options.sizeLength || 4);
-		options.minLen = parseInt(options.minLen || 3);
-		options.prefillByte = parseInt(options.prefillByte || 0x00);
-		options.windowStartAt0 = parseBool(options.windowStartAt0);
-		options.littleEndian = parseBool(options.littleEndian);
+		options.bitstream = parseBool(options.bitstream);
+		options.invertFlag = parseBool(options.invertFlag);
 		options.lengthHigh = parseBool(options.lengthHigh);
+		options.littleEndian = parseBool(options.littleEndian);
+		options.minDistance = parseInt(options.minDistance || 0);
+		// minLen can't be 0 (infinite loop).
+		options.minLen = parseInt(options.minLen || 3);
 		options.offsetRotate = parseInt(options.offsetRotate || 0);
+		options.prefillByte = parseInt(options.prefillByte || 0x00);
+		options.relativeDistance = parseBool(options.relativeDistance);
+		// sizeDistance can't be 0.
+		options.sizeDistance = parseInt(options.sizeDistance || 12);
+		// sizeLength can't be 0.
+		options.sizeLength = parseInt(options.sizeLength || 4);
+		options.windowStartAt0 = parseBool(options.windowStartAt0);
 
-		const sizeOffset = 16 - options.sizeLength;
-		const windowSize = (1 << sizeOffset);
+		const windowSize = (1 << options.sizeDistance);
 		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
 		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
 
@@ -276,7 +376,6 @@ export default class Compress_LZSS
 		let textBuf = new Uint8Array(windowSize + maxBackrefSize - 1).fill(options.prefillByte);
 		let r_windowInputPos = windowStartPos;
 		let inputPos = 0;
-		let chunkIndex = 0;
 		let inputStringLen = 0;
 		let i = 0;
 
@@ -286,23 +385,124 @@ export default class Compress_LZSS
 
 		let sizeShift, offShift;
 		if (options.lengthHigh) {
-			sizeShift = sizeOffset;
+			sizeShift = options.sizeDistance;
 			offShift = 0;
 		} else {
 			sizeShift = 0;
 			offShift = options.sizeLength;
 		}
 
-		const offMask = (1 << sizeOffset) - 1;
+		const offMask = (1 << options.sizeDistance) - 1;
 
-		// we buffer up 8 chunks at a time (a mixture of literals and backreferences)
-		// because the flags that indicate the chunk type are packed together into
-		// a single prefix byte
-		let chunkBuf = new Array();
+		const invert = options.invertFlag ? 1 : 0;
 
-		// init the flag byte with all the flags clear;
-		// we'll OR-in individual flags as literals are added
-		chunkBuf.push(0);
+		let fnWriteLiteral, fnWriteLengthDistance, fnFlush;
+		if (options.bitstream) {
+			// Support functions for bit-level LZSS.
+
+			let bs = new BitStream(
+				new BitView(output.buffer, output.byteOffset, output.byteLength)
+			);
+			bs.bigEndian = !options.littleEndian;
+
+			fnWriteLiteral = literalByte => {
+				bs.writeBits(0 ^ invert, 1);
+				bs.writeBits(literalByte, 8);
+			};
+
+			fnWriteLengthDistance = (backrefSize, backrefOffset) => {
+				bs.writeBits(1 ^ invert, 1);
+				if (options.lengthHigh) {
+					bs.writeBits(backrefSize, options.sizeLength);
+					bs.writeBits(backrefOffset, options.sizeDistance);
+				} else {
+					bs.writeBits(backrefOffset, options.sizeDistance);
+					bs.writeBits(backrefSize, options.sizeLength);
+				}
+			};
+
+			fnFlush = () => {
+				// Write zero bits until the next byte boundary.
+				const bitsLeft = (8 - (bs.index % 8)) % 8;
+				if (bitsLeft) bs.writeBits(0, bitsLeft);
+
+				return new Uint8Array(output.buffer, 0, bs.byteIndex);
+			};
+
+		} else {
+			// Support functions for byte-level LZSS.
+
+			let chunkIndex = 0;
+
+			// we buffer up 8 chunks at a time (a mixture of literals and
+			// backreferences) because the flags that indicate the chunk type are
+			// packed together into a single prefix byte
+			let chunkBuf = new Array();
+
+			// init the flag byte with all the flags clear;
+			// we'll OR-in individual flags as literals are added
+			chunkBuf.push(0);
+
+			function flushChunks() {
+				// once we've finished 8 chunks, write them to the output
+				if (++chunkIndex >= 8) {
+
+					const binaryChunkBuf = new Uint8Array(chunkBuf);
+					output.put(binaryChunkBuf);
+
+					chunkIndex = 0;
+					chunkBuf.length = 0;
+					chunkBuf.push(0);
+				}
+			}
+
+			fnWriteLiteral = literalByte => {
+				// set the flag indicating that this chunk is a literal
+				chunkBuf[0] |= ((0 ^ invert) << chunkIndex);
+				chunkBuf.push(literalByte);
+
+				flushChunks();
+			};
+
+			fnWriteLengthDistance = (backrefSize, backrefOffset) => {
+				chunkBuf[0] |= ((1 ^ invert) << chunkIndex);
+
+				// Rotate the offset by the given number of bits, e.g. 0xABC rotated
+				// by 4 = CAB.  This is the opposite direction to when we read it.
+				if (options.offsetRotate) {
+					backrefOffset =
+						(
+							(backrefOffset >> options.offsetRotate)
+							| (backrefOffset << (options.sizeDistance - options.offsetRotate))
+						) & offMask
+					;
+				}
+
+				backrefSize <<= sizeShift;
+				backrefOffset <<= offShift;
+
+				const word = backrefOffset | backrefSize;
+				if (options.littleEndian) {
+					chunkBuf.push(word & 0xFF);
+					chunkBuf.push(word >> 8);
+				} else {
+					chunkBuf.push(word >> 8);
+					chunkBuf.push(word & 0xFF);
+				}
+
+				flushChunks();
+			};
+
+			fnFlush = () => {
+				// if there's a partial set of eight chunks, write it to the output
+				if (chunkIndex > 0) {
+					const binaryChunkBuf = new Uint8Array(chunkBuf);
+					output.put(binaryChunkBuf);
+				}
+
+				return output.getU8();
+			};
+		}
 
 		// Fill the read buffer until it is full or the end of the data is reached.
 		const lenRead = Math.min(
@@ -329,49 +529,23 @@ export default class Compress_LZSS
 			}
 
 			// if a match was found, produce a backreference in the output stream
-			if (bestMatchLen >= options.minLen) {
+			if (
+				(bestMatchLen >= options.minLen)
+				&& (bestMatchStartPos >= options.minDistance)
+			) {
 
-				let backrefOffset = bestMatchStartPos;
-				let backrefSize = (bestMatchLen - options.minLen) << sizeShift;
-
-				// Rotate the offset by the given number of bits, e.g. 0xABC rotated
-				// by 4 = CAB.  This is the opposite direction to when we read it.
-				if (options.offsetRotate) {
-					backrefOffset =
-						(
-							(backrefOffset >> options.offsetRotate)
-							| (backrefOffset << (sizeOffset - options.offsetRotate))
-						) & offMask
-					;
+				if (options.relativeDistance) {
+					bestMatchStartPos = (windowSize + r_windowInputPos - bestMatchStartPos) % windowSize;
 				}
 
-				backrefOffset <<= offShift;
+				let backrefOffset = bestMatchStartPos - options.minDistance;
+				let backrefSize = bestMatchLen - options.minLen;
 
-				const word = backrefOffset | backrefSize;
-				if (options.littleEndian) {
-					chunkBuf.push(word & 0xFF);
-					chunkBuf.push(word >> 8);
-				} else {
-					chunkBuf.push(word >> 8);
-					chunkBuf.push(word & 0xFF);
-				}
+				fnWriteLengthDistance(backrefSize, backrefOffset);
 
 			} else { // otherwise, produce a literal
 				bestMatchLen = 1;
-				// set the flag indicating that this chunk is a literal
-				chunkBuf[0] |= (1 << chunkIndex);
-				chunkBuf.push(textBuf[r_windowInputPos]);
-			}
-
-			// once we've finished 8 chunks, write them to the output
-			if (++chunkIndex >= 8) {
-
-				const binaryChunkBuf = new Uint8Array(chunkBuf);
-				output.put(binaryChunkBuf);
-
-				chunkIndex = 0;
-				chunkBuf.length = 0;
-				chunkBuf.push(0);
+				fnWriteLiteral(textBuf[r_windowInputPos]);
 			}
 
 			// replace the matched parts of the string
@@ -397,12 +571,6 @@ export default class Compress_LZSS
 			r_windowInputPos = (r_windowInputPos + advance) & (windowSize - 1);
 		}
 
-		// if there's a partial set of eight chunks, write it to the output
-		if (chunkIndex > 0) {
-			const binaryChunkBuf = new Uint8Array(chunkBuf);
-			output.put(binaryChunkBuf);
-		}
-
-		return output.getU8();
+		return fnFlush();
 	}
 }

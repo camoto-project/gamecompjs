@@ -11,6 +11,8 @@ decompress game data, as well as encrypt and decrypt it too.
 
 * cmp-lzexe: LZEXE .exe files (decompression only, equivalent to UNLZEXE)
 * cmp-lzss: Generic LZSS (Lempel-Ziv-Storer-Szymanski)
+  * Byte mode (8 flag bits stored upfront in a single byte)
+  * Bit mode (each flag bit stored before each literal or length+distance code)
 * cmp-lzw: Generic LZW (Lempel-Ziv-Welch)
 * cmp-rle-bash: Monster Bash *.DAT run-length-encoding
 * cmp-rle-ccomic: Captain Comic *.EGA run-length-encoding

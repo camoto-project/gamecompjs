@@ -37,37 +37,69 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		indy500: {
 			title: 'Indy 500',
 			options: {
-				sizeLength: 4,
-				minLen: 3,
-				prefillByte: 0x20,
-				// [default] windowStartAt0: false,
-				// [default] littleEndian: false,
+				bitstream: false,
+				invertFlag: true,
 				lengthHigh: false,
+				littleEndian: false,
+				minDistance: 0,
+				minLen: 3,
 				offsetRotate: 8,
+				prefillByte: 0x20,
+				relativeDistance: false,
+				sizeDistance: 12,
+				sizeLength: 4,
+				windowStartAt0: false,
 			},
 		},
 		lostvikings: {
 			title: 'Lost Vikings',
 			options: {
-				sizeLength: 4,
-				minLen: 3,
-				// [default] prefillByte: 0x00,
-				windowStartAt0: true,
-				littleEndian: true,
+				bitstream: false,
+				invertFlag: true,
 				lengthHigh: true,
-				// [default] offsetRotate: 0,
+				littleEndian: true,
+				minDistance: 0,
+				minLen: 3,
+				offsetRotate: 0,
+				prefillByte: 0x00,
+				relativeDistance: false,
+				sizeDistance: 12,
+				sizeLength: 4,
+				windowStartAt0: true,
 			},
 		},
 		nomad: {
 			title: 'Nomad',
 			options: {
-				sizeLength: 4,
-				minLen: 3,
-				prefillByte: 0x20,
-				// [default] windowStartAt0: false,
-				littleEndian: true,
+				bitstream: false,
+				invertFlag: true,
 				lengthHigh: true,
-				// [default] offsetRotate: 0,
+				littleEndian: true,
+				minDistance: 0,
+				minLen: 3,
+				offsetRotate: 0,
+				prefillByte: 0x20,
+				relativeDistance: false,
+				sizeDistance: 12,
+				sizeLength: 4,
+				windowStartAt0: false,
+			},
+		},
+		prehistorik: {
+			title: 'Prehistorik',
+			options: {
+				bitstream: true,
+				invertFlag: false,
+				lengthHigh: true,
+				littleEndian: false,
+				minDistance: 1,
+				minLen: 2,
+				offsetRotate: 0,
+				prefillByte: 0x00,
+				relativeDistance: true,
+				sizeDistance: 8,
+				sizeLength: 2,
+				windowStartAt0: true,
 			},
 		},
 	};
@@ -77,6 +109,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			'indy500',
 			'lostvikings',
 			'nomad',
+			'prehistorik',
 		]);
 	});
 
@@ -88,7 +121,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				assert.notEqual(content[id].main, null, `Content for ${p.title} is null`);
 				assert.notEqual(content[id].main, undefined, `Content for ${p.title} is undefined`);
 
-				const contentRevealed = handler.reveal(content[id].main, p.options);
+				let contentRevealed = handler.reveal(content[id].main, p.options);
+
+				// Because there must be flags padded up to the next byte, there is
+				// always trailing data we have to chop off.
+				contentRevealed = contentRevealed.slice(0, standardCleartext.length);
+
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
@@ -104,7 +142,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				0x00, 0x00, 0x00, 0x01,
 			]);
 
-			const contentRevealed = handler.reveal(b_obs, presets.lostvikings.options);
+			let contentRevealed = handler.reveal(b_obs, presets.lostvikings.options);
+
+			// Because there must be flags padded up to the next byte, there is
+			// always trailing data we have to chop off.
+			contentRevealed = contentRevealed.slice(0, b_rev.length);
+
 			TestUtil.buffersEqual(b_rev, contentRevealed);
 		});
 	});
@@ -133,7 +176,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				// one again with different options.
 				it(`standard content`, function() {
 					const contentObscured = handler.obscure(standardCleartext, p.options);
-					const contentRevealed = handler.reveal(contentObscured, p.options);
+					let contentRevealed = handler.reveal(contentObscured, p.options);
+
+					// Because there must be flags padded up to the next byte, there is
+					// always trailing data we have to chop off.
+					contentRevealed = contentRevealed.slice(0, standardCleartext.length);
+
 					TestUtil.buffersEqual(standardCleartext, contentRevealed);
 				});
 
@@ -144,7 +192,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 					}
 
 					const contentObscured = handler.obscure(u8input, p.options);
-					const contentRevealed = handler.reveal(contentObscured, p.options);
+					let contentRevealed = handler.reveal(contentObscured, p.options);
+
+					// Because there must be flags padded up to the next byte, there is
+					// always trailing data we have to chop off.
+					contentRevealed = contentRevealed.slice(0, u8input.length);
+
 					TestUtil.buffersEqual(u8input, contentRevealed);
 				});
 
@@ -152,7 +205,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				it(`compressible data larger than the maximum length`, function() {
 					const ct = new Uint8Array(32).fill(65);
 					const contentObscured = handler.obscure(ct, p.options);
-					const contentRevealed = handler.reveal(contentObscured, p.options);
+					let contentRevealed = handler.reveal(contentObscured, p.options);
+
+					// Because there must be flags padded up to the next byte, there is
+					// always trailing data we have to chop off.
+					contentRevealed = contentRevealed.slice(0, ct.length);
+
 					TestUtil.buffersEqual(ct, contentRevealed);
 				});
 
