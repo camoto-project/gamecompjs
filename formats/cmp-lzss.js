@@ -52,8 +52,8 @@ function parseBool(s) {
  * Assuming the two bytes are AB followed by CD (i.e. a big-endian value 0xABCD)
  * then decoding that into length+offset happens as follows:
  *
- * Split | lengthHigh | bigEndian | offsetRotate
- * ------+------------+-----------+-------------
+ * Split | lengthHigh | bigEndian | rotateDistance
+ * ------+------------+-----------+---------------
  * ABC+D | false      | true      | 0
  * A+BCD | true       | true      | 0
  * CDA+B | false      | false     | 0
@@ -87,11 +87,11 @@ export default class Compress_LZSS
 					+ 'bits. [false]',
 				littleEndian: 'Endian of 16-bit offset+length value: '
 					+ 'true = little, false = big [false]',
-				minDistance: 'Minimum distance of a backreference string (when '
-					+ 'distance value is 0), in bytes [0]',
-				minLen: 'Minimum length of a backreference string (when length value '
-					+ 'is 0), in bytes [3]',
-				offsetRotate: 'How many bits to rotate the backreference offset '
+				minDistance: 'Minimum distance of a backreference string (actual '
+					+ 'distance when value is 0), in bytes [0]',
+				minLength: 'Minimum length of a backreference string (actual length when '
+					+ 'value is 0), in bytes [3]',
+				rotateDistance: 'How many bits to rotate the backreference distance '
 					+ 'field [0]',
 				prefillByte: 'Byte used to prefill the sliding window buffer [0x00]',
 				relativeDistance: 'Backreference distance is relative to current '
@@ -114,9 +114,9 @@ export default class Compress_LZSS
 		options.lengthHigh = parseBool(options.lengthHigh);
 		options.littleEndian = parseBool(options.littleEndian);
 		options.minDistance = parseInt(options.minDistance || 0);
-		// minLen can't be 0.
-		options.minLen = parseInt(options.minLen || 3);
-		options.offsetRotate = parseInt(options.offsetRotate || 0);
+		// minLength can't be 0.
+		options.minLength = parseInt(options.minLength || 3);
+		options.rotateDistance = parseInt(options.rotateDistance || 0);
 		options.prefillByte = parseInt(options.prefillByte || 0x00);
 		options.relativeDistance = parseBool(options.relativeDistance);
 		// sizeDistance can't be 0.
@@ -137,12 +137,12 @@ export default class Compress_LZSS
 		}
 
 		const windowSize = (1 << options.sizeDistance);
-		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
-		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
+		const maxBackrefLength = (1 << options.sizeLength) + options.minLength - 1;
+		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefLength;
 
 		// 2 bytes for each of 8 backrefs, plus flag byte
 		const minEncodedBytesPer8Chunks = (8 * 2) + 1;
-		const maxDecodedBytesPer8Chunks = (8 * maxBackrefSize);
+		const maxDecodedBytesPer8Chunks = (8 * maxBackrefLength);
 
 		const maxTheoreticalCompressionRatio =
 			Math.ceil(maxDecodedBytesPer8Chunks / minEncodedBytesPer8Chunks);
@@ -151,16 +151,16 @@ export default class Compress_LZSS
 
 		// Calculate the shifts and masks needed to extract the length and
 		// offset values from the word we just read.
-		let sizeShift, offShift;
+		let shiftLength, shiftDistance;
 		if (options.lengthHigh) {
-			sizeShift = options.sizeDistance;
-			offShift = 0;
+			shiftLength = options.sizeDistance;
+			shiftDistance = 0;
 		} else {
-			sizeShift = 0;
-			offShift = options.sizeLength;
+			shiftLength = 0;
+			shiftDistance = options.sizeLength;
 		}
-		const sizeMask = (1 << options.sizeLength) - 1;
-		const offMask = (1 << options.sizeDistance) - 1;
+		const maskLength = (1 << options.sizeLength) - 1;
+		const maskDistance = (1 << options.sizeDistance) - 1;
 
 		let windowPos = windowStartPos;
 		let slidingWindow = new Array(windowSize).fill(options.prefillByte);
@@ -227,12 +227,12 @@ export default class Compress_LZSS
 			fnReadLengthDistance = () => {
 				const brWord = fnReadWord();
 
-				let backrefOffset = (brWord >> offShift) & offMask;
-				let backrefSize = (brWord >> sizeShift) & sizeMask;
+				let backrefDistance = (brWord >> shiftDistance) & maskDistance;
+				let backrefLength = (brWord >> shiftLength) & maskLength;
 
 				return [
-					backrefSize,
-					backrefOffset,
+					backrefLength,
+					backrefDistance,
 				];
 			};
 
@@ -249,37 +249,37 @@ export default class Compress_LZSS
 				// describe the backreference
 				if (fnBitsRemaining() < 16) break;
 
-				let [ backrefSize, backrefOffset ] = fnReadLengthDistance();
+				let [ backrefLength, backrefDistance ] = fnReadLengthDistance();
 
 				// Rotate the offset by the given number of bits, e.g. 0xABC rotated
 				// by 4 = BCA.
-				if (options.offsetRotate) {
-					backrefOffset =
+				if (options.rotateDistance) {
+					backrefDistance =
 						(
-							(backrefOffset << options.offsetRotate)
-							| (backrefOffset >> (options.sizeDistance - options.offsetRotate))
-						) & offMask
+							(backrefDistance << options.rotateDistance)
+							| (backrefDistance >> (options.sizeDistance - options.rotateDistance))
+						) & maskDistance
 					;
 				}
 
-				backrefSize += options.minLen;
-				backrefOffset += options.minDistance;
+				backrefLength += options.minLength;
+				backrefDistance += options.minDistance;
 
 				if (options.relativeDistance) {
-					backrefOffset = windowSize + windowPos - backrefOffset;
+					backrefDistance = windowSize + windowPos - backrefDistance;
 				}
 
 				// copy the bytes from the sliding window to the output, and also
 				// to the end of the sliding window
-				for (let brByteIdx = 0; brByteIdx < backrefSize; brByteIdx++) {
-					backrefOffset %= windowSize;
+				for (let brByteIdx = 0; brByteIdx < backrefLength; brByteIdx++) {
+					backrefDistance %= windowSize;
 
-					const curByte = slidingWindow[backrefOffset];
+					const curByte = slidingWindow[backrefDistance];
 					output.write(RecordType.int.u8, curByte);
 
 					slidingWindow[windowPos] = curByte;
 
-					++backrefOffset;
+					++backrefDistance;
 					++windowPos; windowPos %= windowSize;
 				}
 
@@ -355,9 +355,9 @@ export default class Compress_LZSS
 		options.lengthHigh = parseBool(options.lengthHigh);
 		options.littleEndian = parseBool(options.littleEndian);
 		options.minDistance = parseInt(options.minDistance || 0);
-		// minLen can't be 0 (infinite loop).
-		options.minLen = parseInt(options.minLen || 3);
-		options.offsetRotate = parseInt(options.offsetRotate || 0);
+		// minLength can't be 0 (infinite loop).
+		options.minLength = parseInt(options.minLength || 3);
+		options.rotateDistance = parseInt(options.rotateDistance || 0);
 		options.prefillByte = parseInt(options.prefillByte || 0x00);
 		options.relativeDistance = parseBool(options.relativeDistance);
 		// sizeDistance can't be 0.
@@ -367,32 +367,32 @@ export default class Compress_LZSS
 		options.windowStartAt0 = parseBool(options.windowStartAt0);
 
 		const windowSize = (1 << options.sizeDistance);
-		const maxBackrefSize = (1 << options.sizeLength) + options.minLen - 1;
-		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefSize;
+		const maxBackrefLength = (1 << options.sizeLength) + options.minLength - 1;
+		const windowStartPos = options.windowStartAt0 ? 0 : windowSize - maxBackrefLength;
 
 		// worst case is an increase in content size by 12.5% (negative compression)
 		let output = new RecordBuffer(content.length * 1.13);
 
-		let textBuf = new Uint8Array(windowSize + maxBackrefSize - 1).fill(options.prefillByte);
+		let textBuf = new Uint8Array(windowSize + maxBackrefLength - 1).fill(options.prefillByte);
 		let r_windowInputPos = windowStartPos;
 		let inputPos = 0;
 		let inputStringLen = 0;
 		let i = 0;
 
-		// s starts maxBackrefSize bytes after windowStartPos, wrapping around to
+		// s starts maxBackrefLength bytes after windowStartPos, wrapping around to
 		// the start of the window if needed.
-		let s = (windowStartPos + maxBackrefSize + windowSize) % windowSize;
+		let s = (windowStartPos + maxBackrefLength + windowSize) % windowSize;
 
-		let sizeShift, offShift;
+		let shiftLength, shiftDistance;
 		if (options.lengthHigh) {
-			sizeShift = options.sizeDistance;
-			offShift = 0;
+			shiftLength = options.sizeDistance;
+			shiftDistance = 0;
 		} else {
-			sizeShift = 0;
-			offShift = options.sizeLength;
+			shiftLength = 0;
+			shiftDistance = options.sizeLength;
 		}
 
-		const offMask = (1 << options.sizeDistance) - 1;
+		const maskDistance = (1 << options.sizeDistance) - 1;
 
 		const invert = options.invertFlag ? 1 : 0;
 
@@ -410,14 +410,14 @@ export default class Compress_LZSS
 				bs.writeBits(literalByte, 8);
 			};
 
-			fnWriteLengthDistance = (backrefSize, backrefOffset) => {
+			fnWriteLengthDistance = (backrefLength, backrefDistance) => {
 				bs.writeBits(1 ^ invert, 1);
 				if (options.lengthHigh) {
-					bs.writeBits(backrefSize, options.sizeLength);
-					bs.writeBits(backrefOffset, options.sizeDistance);
+					bs.writeBits(backrefLength, options.sizeLength);
+					bs.writeBits(backrefDistance, options.sizeDistance);
 				} else {
-					bs.writeBits(backrefOffset, options.sizeDistance);
-					bs.writeBits(backrefSize, options.sizeLength);
+					bs.writeBits(backrefDistance, options.sizeDistance);
+					bs.writeBits(backrefLength, options.sizeLength);
 				}
 			};
 
@@ -464,24 +464,24 @@ export default class Compress_LZSS
 				flushChunks();
 			};
 
-			fnWriteLengthDistance = (backrefSize, backrefOffset) => {
+			fnWriteLengthDistance = (backrefLength, backrefDistance) => {
 				chunkBuf[0] |= ((1 ^ invert) << chunkIndex);
 
 				// Rotate the offset by the given number of bits, e.g. 0xABC rotated
 				// by 4 = CAB.  This is the opposite direction to when we read it.
-				if (options.offsetRotate) {
-					backrefOffset =
+				if (options.rotateDistance) {
+					backrefDistance =
 						(
-							(backrefOffset >> options.offsetRotate)
-							| (backrefOffset << (options.sizeDistance - options.offsetRotate))
-						) & offMask
+							(backrefDistance >> options.rotateDistance)
+							| (backrefDistance << (options.sizeDistance - options.rotateDistance))
+						) & maskDistance
 					;
 				}
 
-				backrefSize <<= sizeShift;
-				backrefOffset <<= offShift;
+				backrefLength <<= shiftLength;
+				backrefDistance <<= shiftDistance;
 
-				const word = backrefOffset | backrefSize;
+				const word = backrefDistance | backrefLength;
 				if (options.littleEndian) {
 					chunkBuf.push(word & 0xFF);
 					chunkBuf.push(word >> 8);
@@ -506,7 +506,7 @@ export default class Compress_LZSS
 
 		// Fill the read buffer until it is full or the end of the data is reached.
 		const lenRead = Math.min(
-			maxBackrefSize - inputStringLen,
+			maxBackrefLength - inputStringLen,
 			content.length - inputPos
 		);
 
@@ -522,7 +522,7 @@ export default class Compress_LZSS
 		while (inputStringLen > 0) {
 
 			let { bestMatchStartPos, bestMatchLen } =
-				findMatch(r_windowInputPos, textBuf, windowSize, maxBackrefSize);
+				findMatch(r_windowInputPos, textBuf, windowSize, maxBackrefLength);
 
 			if (bestMatchLen > inputStringLen) {
 				bestMatchLen = inputStringLen;
@@ -530,7 +530,7 @@ export default class Compress_LZSS
 
 			// if a match was found, produce a backreference in the output stream
 			if (
-				(bestMatchLen >= options.minLen)
+				(bestMatchLen >= options.minLength)
 				&& (bestMatchStartPos >= options.minDistance)
 			) {
 
@@ -538,10 +538,10 @@ export default class Compress_LZSS
 					bestMatchStartPos = (windowSize + r_windowInputPos - bestMatchStartPos) % windowSize;
 				}
 
-				let backrefOffset = bestMatchStartPos - options.minDistance;
-				let backrefSize = bestMatchLen - options.minLen;
+				let backrefDistance = bestMatchStartPos - options.minDistance;
+				let backrefLength = bestMatchLen - options.minLength;
 
-				fnWriteLengthDistance(backrefSize, backrefOffset);
+				fnWriteLengthDistance(backrefLength, backrefDistance);
 
 			} else { // otherwise, produce a literal
 				bestMatchLen = 1;
@@ -553,7 +553,7 @@ export default class Compress_LZSS
 			while ((i < bestMatchLen) && (inputPos < content.length)) {
 
 				textBuf[s] = content[inputPos];
-				if (s < (maxBackrefSize - 1)) {
+				if (s < (maxBackrefLength - 1)) {
 					textBuf[s + windowSize] = content[inputPos];
 				}
 
