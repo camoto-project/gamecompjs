@@ -34,6 +34,23 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				// defaults
 			},
 		},
+		got: {
+			title: 'God of Thunder',
+			options: {
+				bitstream: false,
+				invertFlag: true,
+				lengthHigh: true,
+				littleEndian: true,
+				minDistance: 0,
+				minLength: 2,
+				prefillByte: 0x00,
+				relativeDistance: true,
+				rotateDistance: 0,
+				sizeDistance: 12,
+				sizeLength: 4,
+				windowStartAt0: true,
+			},
+		},
 		indy500: {
 			title: 'Indy 500',
 			options: {
@@ -106,6 +123,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	before('load test data from local filesystem', function() {
 		content = testutil.loadContent(handler, [
 			'default',
+			'got',
 			'indy500',
 			'lostvikings',
 			'nomad',
