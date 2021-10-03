@@ -1,5 +1,5 @@
 /*
- * Main library interface.
+ * Decompress an .exe if it is compressed, otherwise return it unchanged.
  *
  * Copyright (C) 2010-2021 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -17,18 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-export * from './formats/index.js';
-export * from './util/decompress_exe.js';
-
-import * as formats from './formats/index.js';
+import cmp_lzexe from '../formats/cmp-lzexe.js';
 
 /**
- * Get a list of all the available handlers.
- *
- * This is preferable to `import *` because most libraries also export utility
- * functions like the autodetection routine which would be included even though
- * they are not format handlers.
+ * Decompress the executable, if it is compressed with a supported runtime
+ * decompressor such as LZEXE or PKLite.
  */
-export const all = [
-	...Object.values(formats),
-];
+export function decompress_exe(content)
+{
+	let output = content;
+
+	if (cmp_lzexe.identify(content).valid) {
+		output = cmp_lzexe.reveal(content);
+	}
+
+	return output;
+}
