@@ -28,12 +28,13 @@ export default function cli() {
 	const param = process.argv[2];
 
 	if (['-h', '--help', '-?', '?', undefined].some(v => param == v)) {
-		console.log('gamecomp --formats | (+|-)format [opt=val [opt=val ...]]\n');
-		console.log('gamecomp --formats    // List algorithms and their options');
-		console.log('gamecomp +example     // Compress/encrypt with "example" algorithm');
-		console.log('gamecomp -example     // Decompress/decrypt with "example"');
-		console.log('gamecomp +ex opt=123  // Pass parameter to algorithm');
-		console.log('gamecomp +ex @opt=file.dat  // Pass file content as parameter');
+		console.log('gamecomp (--formats|--identify) | (+|-)format [opt=val [opt=val ...]]\n');
+		console.log('gamecomp --formats          // List algorithms and their options');
+		console.log('gamecomp +xyz < in > out    // Compress/encrypt with "xyz" algorithm');
+		console.log('gamecomp -xyz < in > out    // Decompress/decrypt with "xyz"');
+		console.log('gamecomp +xyz opt=123       // Pass parameter to algorithm');
+		console.log('gamecomp +xyz @opt=file.dat // Pass file content as parameter');
+		console.log('gamecomp --identify < in    // Identify format if possible');
 		console.log('DEBUG=\'gamecomp:*\' gamecomp ...  // Troubleshoot');
 		process.exit(0);
 	}
@@ -45,6 +46,23 @@ export default function cli() {
 			if (md.options) Object.keys(md.options).forEach(p => {
 				console.log(`  * ${p}: ${md.options[p]}`);
 			});
+		}
+		process.exit(0);
+	}
+
+	if (param == '--identify') {
+		const content = fs.readFileSync(0, null);
+		for (const handler of gamecompAll) {
+			if (handler.identify) {
+				const md = handler.metadata();
+				try {
+					const result = handler.identify(content);
+					console.log(`${md.id}: ${result.valid.toString()}; ${result.reason}`);
+				} catch (e) {
+					console.error(e);
+					console.error(`BUG: ${md.id} threw exception: ${e.message}`);
+				}
+			}
 		}
 		process.exit(0);
 	}
