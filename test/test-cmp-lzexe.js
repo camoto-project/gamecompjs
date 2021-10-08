@@ -29,28 +29,28 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	before('load test data from local filesystem', function() {
 
 		content = testutil.loadContent(handler, [
-			'clear',
-			'lzexe90',
-			'lzexe91',
-			'lzexe91e',
+			'clear.bin',
+			'lzexe90.bin',
+			'lzexe91.bin',
+			'lzexe91e.bin',
 		]);
 	});
 
 	describe('reveal()', function() {
 
 		it('works with LZEXE 0.90', function() {
-			const contentRevealed = handler.reveal(content['lzexe90'].main);
-			TestUtil.buffersEqual(content['clear'].main, contentRevealed);
+			const contentRevealed = handler.reveal(content['lzexe90.bin'].main);
+			TestUtil.buffersEqual(content['clear.bin'].main, contentRevealed);
 		});
 
 		it('works with LZEXE 0.91', function() {
-			const contentRevealed = handler.reveal(content['lzexe91'].main);
-			TestUtil.buffersEqual(content['clear'].main, contentRevealed);
+			const contentRevealed = handler.reveal(content['lzexe91.bin'].main);
+			TestUtil.buffersEqual(content['clear.bin'].main, contentRevealed);
 		});
 
 		it('works with LZEXE 0.91e', function() {
-			const contentRevealed = handler.reveal(content['lzexe91e'].main);
-			TestUtil.buffersEqual(content['clear'].main, contentRevealed);
+			const contentRevealed = handler.reveal(content['lzexe91e.bin'].main);
+			TestUtil.buffersEqual(content['clear.bin'].main, contentRevealed);
 		});
 
 	}); // reveal()
@@ -58,21 +58,21 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	describe('identify()', function() {
 
 		it('recognises LZEXE 0.90', function() {
-			const result = handler.identify(content['lzexe90'].main);
+			const result = handler.identify(content['lzexe90.bin'].main);
 
 			assert.equal(result.reason, 'Compressed with LZEXE 0.90.');
 			assert.equal(result.valid, true);
 		});
 
 		it('recognises LZEXE 0.91', function() {
-			const result = handler.identify(content['lzexe91'].main);
+			const result = handler.identify(content['lzexe91.bin'].main);
 
 			assert.equal(result.reason, 'Compressed with LZEXE 0.91.');
 			assert.equal(result.valid, true);
 		});
 
 		it('recognises LZEXE 0.91e', function() {
-			const result = handler.identify(content['lzexe91e'].main);
+			const result = handler.identify(content['lzexe91e.bin'].main);
 
 			assert.equal(result.reason, 'Compressed with LZEXE 0.91e.');
 			assert.equal(result.valid, true);

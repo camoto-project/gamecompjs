@@ -79,12 +79,7 @@ export default class TestUtil {
 	loadContent(handler, ids) {
 		let content = {};
 		for (const name of ids) {
-			const pathFiles = path.resolve(__dirname, this.idHandler);
-			const files = fs.readdirSync(pathFiles);
-			const target = files.filter(f => f.startsWith(name + '.'));
-			assert.ok(target.length === 1, `Expected only one file: ${this.idHandler}/${name}.*`);
-
-			const mainFilename = path.join(__dirname, this.idHandler, target[0]);
+			const mainFilename = path.join(__dirname, this.idHandler, name);
 			let input = {
 				main: this.loadData(mainFilename),
 			};

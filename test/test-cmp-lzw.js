@@ -92,9 +92,9 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	};
 	before('load test data from local filesystem', function() {
 		content = testutil.loadContent(handler, [
-			'default',
-			'lionking',
-			'mbash',
+			'default.bin',
+			'lionking.bin',
+			'mbash.bin',
 		]);
 	});
 
@@ -103,10 +103,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				assert.notEqual(content[id].main, null, `Content for ${p.title} is null`);
-				assert.notEqual(content[id].main, undefined, `Content for ${p.title} is undefined`);
+				assert.notEqual(content[`${id}.bin`].main, null, `Content for ${p.title} is null`);
+				assert.notEqual(content[`${id}.bin`].main, undefined, `Content for ${p.title} is undefined`);
 
-				const contentRevealed = handler.reveal(content[id].main, p.options);
+				const contentRevealed = handler.reveal(content[`${id}.bin`].main, p.options);
 				TestUtil.buffersEqual(standardCleartext, contentRevealed);
 			});
 		});
@@ -198,11 +198,11 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				assert.notEqual(content[id].main, null, `Content for ${p.title} is null`);
-				assert.notEqual(content[id].main, undefined, `Content for ${p.title} is undefined`);
+				assert.notEqual(content[`${id}.bin`].main, null, `Content for ${p.title} is null`);
+				assert.notEqual(content[`${id}.bin`].main, undefined, `Content for ${p.title} is undefined`);
 
 				const contentObscured = handler.obscure(standardCleartext, p.options);
-				TestUtil.buffersEqual(content[id].main, contentObscured);
+				TestUtil.buffersEqual(content[`${id}.bin`].main, contentObscured);
 			});
 		});
 

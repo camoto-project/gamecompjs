@@ -122,12 +122,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 	};
 	before('load test data from local filesystem', function() {
 		content = testutil.loadContent(handler, [
-			'default',
-			'got',
-			'indy500',
-			'lostvikings',
-			'nomad',
-			'prehistorik',
+			'default.bin',
+			'got.bin',
+			'indy500.bin',
+			'lostvikings.bin',
+			'nomad.bin',
+			'prehistorik.bin',
 		]);
 	});
 
@@ -136,10 +136,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				assert.notEqual(content[id].main, null, `Content for ${p.title} is null`);
-				assert.notEqual(content[id].main, undefined, `Content for ${p.title} is undefined`);
+				assert.notEqual(content[`${id}.bin`].main, null, `Content for ${p.title} is null`);
+				assert.notEqual(content[`${id}.bin`].main, undefined, `Content for ${p.title} is undefined`);
 
-				let contentRevealed = handler.reveal(content[id].main, p.options);
+				let contentRevealed = handler.reveal(content[`${id}.bin`].main, p.options);
 
 				// Because there must be flags padded up to the next byte, there is
 				// always trailing data we have to chop off.
@@ -175,11 +175,11 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			const p = presets[id];
 
 			it(`works with ${p.title} settings`, function() {
-				assert.notEqual(content[id].main, null, `Content for ${p.title} is null`);
-				assert.notEqual(content[id].main, undefined, `Content for ${p.title} is undefined`);
+				assert.notEqual(content[`${id}.bin`].main, null, `Content for ${p.title} is null`);
+				assert.notEqual(content[`${id}.bin`].main, undefined, `Content for ${p.title} is undefined`);
 
 				const contentObscured = handler.obscure(standardCleartext, p.options);
-				TestUtil.buffersEqual(content[id].main, contentObscured);
+				TestUtil.buffersEqual(content[`${id}.bin`].main, contentObscured);
 			});
 		});
 	});
