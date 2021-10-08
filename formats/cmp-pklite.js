@@ -7,6 +7,10 @@
  * Parts also from refkeen: (MIT Licence)
  *   https://github.com/NY00123/refkeen/blob/master/src/depklite/depklite.c
  *
+ * The algorithms for non-large files were deciphered from MZExplode, a reverse
+ * engineering project:
+ *   https://github.com/virginwidow/mz-explode/blob/master/src/explode/unpklite.cc
+ *
  * This code was rewritten from scratch using the above sources as a reference
  * and is thus placed under the GPL.
  *
@@ -31,6 +35,17 @@ const FORMAT_ID = 'cmp-pklite';
 import { RecordBuffer, RecordType } from '@camoto/record-io-buffer';
 import Debug from '../util/debug.js';
 const g_debug = Debug.extend(FORMAT_ID);
+
+function parseBool(s) {
+	if (s === undefined) {
+		return false;
+	} else if (s === true || s === false) {
+		return s;
+	} else if (s.toLowerCase) {
+		return s.toLowerCase() === 'true';
+	}
+	return !!s;
+}
 
 const recordTypes = {
 	exeSig: {
@@ -59,6 +74,9 @@ const recordTypes = {
 		segSS: RecordType.int.u16le,
 		regSP: RecordType.int.u16le,
 		segCS: RecordType.int.u16le,
+		// This field is treated as the .exe checksum in some other decompressors,
+		// yet others treat it as the IP field.  The .exe header only seems to come
+		// out correctly when you treat it as the IP field.
 		regIP: RecordType.int.u16le,
 	},
 };
@@ -66,6 +84,7 @@ const recordTypes = {
 // Bit table from pklite_specification.md, section 4.3.1 "Number of bytes".
 // The decoded value for a given vector is (index + 2) before index 11, and
 // (index + 1) after index 11.
+// Huffman table to use for the "count" values when the "large" flag is set.
 const btCountLarge = [
 	[ // 0b0
 		[ // 0b00
@@ -129,36 +148,32 @@ const btCountLarge = [
 	]
 ];
 
-// This is not quite right yet.
+// Huffman table to use for the "count" values when the "large" flag is not set.
 const btCountSmall = [
 	[ // 0b0
-		[ // 0b00
-			3, // 0b000
-			[ // 0b001
-				2, // 0b0010
-				-1  // 0b0011
-			]
-		], [ // 0b01
-			[ // 0b010
-				4, // 0b0100
-				5  // 0b0101
-			], [ // 0b011
-				[ // 0b0110
-					6, // 0b01100
-					7 // 0b01101
-				], [ // 0b0111
-					-1, // 0b01110
-					9  // 0b01111
-				]
-			]
-		]
+		3, // 0b00
+		[  // 0b01
+			2, // 0b010
+			-1, // 0b011
+		],
 	], [ // 0b1
-		2, // 0b10
-		3  // 0b11
+		[ // 0b10
+			4, // 0b100
+			5, // 0b101
+		], [ // 0b11
+			[ // 0b110
+				6, // 0b1100
+				7, // 0b1101
+			], [ // 0b111
+				8, // 0b1110
+				9, // 0b1111
+			],
+		],
 	]
 ];
 
 // Bit table from pklite_specification.md, section 4.3.2 "Offset".
+// Huffman table to use for the "offset" values regardless of the "large" flag.
 const btOffset = [
 	[          // 0b0
 		[        // 0b00
@@ -253,7 +268,11 @@ export default class Compress_PKLite
 		return {
 			id: FORMAT_ID,
 			title: 'PKLite compression',
-			options: {},
+			options: {
+				recalcHeader: 'If true, recalculate all the fields in the output .exe '
+					+ 'header. Always true if "extra" PKLite flag was used. Only needed '
+					+ 'if .exe has been tampered with [false]',
+			},
 		};
 	}
 
@@ -261,6 +280,13 @@ export default class Compress_PKLite
 		const debug = g_debug.extend('identify');
 
 		let input = new RecordBuffer(content);
+
+		if (content.length < 0x1C + 2) {
+			return {
+				valid: false,
+				reason: 'File too short.',
+			};
+		}
 
 		input.seekAbs(0x1C);
 		const pkliteHeader = input.readRecord(recordTypes.pkliteHeader);
@@ -280,12 +306,13 @@ export default class Compress_PKLite
 		};
 	}
 
-	static reveal(content)
+	static reveal(content, options = {})
 	{
 		const debug = g_debug.extend('reveal');
 
+		let recalcHeader = parseBool(options.recalcHeader);
+
 		let input = new RecordBuffer(content);
-		let outEXE = new RecordBuffer(content.length * 2); // TODO: Length
 
 		input.seekAbs(0);
 		const sig = input.readRecord(recordTypes.exeSig);
@@ -300,6 +327,14 @@ export default class Compress_PKLite
 		const flagLarge = !!(pkliteHeader.verMajor & 0x20);
 		const flagExtra = !!(pkliteHeader.verMajor & 0x10);
 
+		// Start of the code, where the PKLite decompressor sits.
+		const offDecompressor = exeHeader.pgLenHeader << 4;
+
+		// Always recalculate the output .exe header if the 'extra' flag has been
+		// specified, because in this case PKLite does not store the original
+		// header.
+		recalcHeader = recalcHeader || flagExtra;
+
 		debug(`PKLite version ${version}, large=${flagLarge ? 'on' : 'off'}, `
 			+ `extra=${flagExtra ? 'on' : 'off'}`);
 
@@ -309,50 +344,97 @@ export default class Compress_PKLite
 		const offOrigHeader = exeHeader.offRelocTable + exeHeader.relocCount * 4;
 		debug(`Offset of original header: 0x${offOrigHeader.toString(16)}`);
 
-		if (!flagLarge) {
-			throw new Error('Unable to decompress files where "large" flag is off.');
+		// Figure out where the start of the compressed data is.
+		const verCode = (pkliteHeader.verMajor << 8) | pkliteHeader.verMinor;
+		const verBase = verCode & 0x0FFF;
+		let lenDecompressor = {
+			0x0100: 0x1D0,
+			0x0103: 0x1D0,
+			0x0105: 0x1D0,
+			0x010C: 0x1D0,
+			0x010D: 0x1D0,
+			0x010E: 0x1D0,
+			0x010F: 0x1D0,
+			0x0132: -1,
+			0x0201: -1,
+
+			0x1103: 0x1E0,
+			0x110C: 0x1E0,
+			0x110D: 0x1E0,
+			0x110E: 0x200,
+			0x110F: 0x200,
+			//0x1132: -2, // needs calc
+			//0x1201: -2, // probably the same
+
+			0x2100: 0x290,
+			0x2103: 0x290,
+			0x2105: 0x290,
+			0x210A: 0x290,
+			0x210C: 0x290,
+			0x210D: 0x290,
+			0x210E: 0x290,
+			0x210F: 0x290,
+			0x2132: -1,
+			0x2201: -1,
+
+			0x3103: 0x2A0,
+			0x310C: 0x290, // doesn't follow the pattern, but correct
+			0x310D: 0x290, // doesn't follow the pattern, but correct
+			0x310E: 0x2C0,
+			0x310F: 0x2C0,
+			//0x3132: -2, // needs calc
+			//0x3201: -2, // probably the same
+		}[verCode];
+
+		if (lenDecompressor === -1) {
+			input.seekAbs(offDecompressor + 0x48);
+			lenDecompressor = input.read(RecordType.int.u16le);
+			lenDecompressor <<= 1;
+			lenDecompressor += 0x62;
+			lenDecompressor &= 0xFFFFFFF0;
 		}
 
-		// PKLite doesn't use a relocation table but that's the offset where the
-		// original .exe header sits (minus the 'MZ').
-		// Decode it so we can use some values from it.
-		input.seekAbs(offOrigHeader);
-		const origHeader = input.readRecord(recordTypes.exeHeader);
-		// And also extract it as a raw block to preserve any extra header data
-		// before the relocation table that we aren't handing in recordTypes.
-		const lenOrigHeader = origHeader.offRelocTable - 2;
-		const origHeaderRaw = input.getU8(exeHeader.offRelocTable, lenOrigHeader);
+		/* untested
+		if (lenDecompressor === -2) {
+			input.seekAbs(offDecompressor + 0x59);
+			lenDecompressor = input.read(RecordType.int.u8);
+			lenDecompressor += 0xFFFFFF10;
+			lenDecompressor &= 0xFFFFFFF0;
+			debug('Decompressor size:', lenDecompressor);
+		}
+		*/
 
-		// Write 'MZ' followed by the original header.
-		outEXE.writeRecord(recordTypes.exeSig, sig);
-		outEXE.put(origHeaderRaw);
+		if (!lenDecompressor) {
+			throw new Error(`Unsupported PKLite version ${version} (0x${verCode.toString(16)})`);
+		}
 
-		//input.seekAbs(800);//process.env.offset);
-		//input.seekAbs(parseInt(process.env.offset));
+		let output = new RecordBuffer(content.length * 2); // will expand if needed
 
-		// Use the original .exe header to work out how large the file was.  This
-		// size includes the full original header, but not any non-EXE data that
-		// may have been tacked onto the end of the file.
-		let lenLastBlock = origHeader.lenLastBlock;
-		if (lenLastBlock === 0) lenLastBlock = 512;
-		const decompressedSize = ((origHeader.blockCount - 1) * 512)
-			+ lenLastBlock;
+		// Work out how large the decompressed image is.  This could be more than
+		// the data we'll get after decompression, but we need the value to
+		// correctly calculate the pgMinExtra header field.
+		//
+		// TODO: This code produces the wrong header value, due to the decompSize
+		// being incorrect.  The unit tests replace this with the correct value
+		// so if changing this, be sure to remove that from the tests.
+		let decompSizeOffset;
+		if (verBase >= 0x132) {
+			decompSizeOffset = offDecompressor + 2;
+		} else {
+			decompSizeOffset = offDecompressor + 1;
+		}
+		let decompSize = (
+			(content[decompSizeOffset + 0])
+			| (content[decompSizeOffset + 1] << 8)
+		) << 4;
+		if (verCode > 0x105) {
+			decompSize += 0x100;
+		}
+		debug(`Decompressed size is: 0x${decompSize.toString(16)}`);
 
-		let output = new RecordBuffer(decompressedSize); // will expand if needed
-
-		// Start of the code, where the PKLite decompressor sits.
-		const offDecompressor = exeHeader.pgLenHeader << 4;
-		// Jump to code where the address of the compressed data is loaded.
-		input.seekAbs(offDecompressor + 0x4E);
-		const pgOffCompressedData = input.read(RecordType.int.u8);
-		// The data at offset offDecompressor is loaded in memory at segment offset
-		// 0x100, so pgCompressedData is relative to the data starting at 0x100.
-		// We need to adjust it to start from wherever offDecompressor is to convert
-		// the value to a file offset.
-		const memoffDecompStart = pgOffCompressedData << 4;
-		const decompStart = offDecompressor + memoffDecompStart - 0x100;
-		debug(`Compressed data starts at segment offset `
-			+ `0x${memoffDecompStart.toString(16)} / file offset `
+		const decompStart = offDecompressor + lenDecompressor;
+		debug(`Compressed data starts at code offset `
+			+ `0x${lenDecompressor.toString(16)} / file offset `
 			+ `0x${decompStart.toString(16)}`);
 		input.seekAbs(decompStart);
 
@@ -370,6 +452,7 @@ export default class Compress_PKLite
 		};
 		nextBit(); // Fill the bitCache
 
+		readCompressedData: // Name this loop so we can break out of it later.
 		while (input.distFromEnd() >= 1) {
 
 			if (nextBit()) {  // "duplication" mode
@@ -378,15 +461,30 @@ export default class Compress_PKLite
 
 				if (count === -1) { // special case
 					const code = input.read(RecordType.int.u8);
-					if (code === 0xFE) {
-						// Skip this bit.
-						continue;
-					} else if (code === 0xFF) {
-						// Finished decompression.
-						debug(`Code decompression complete at offset 0x${input.getPos().toString(16)}`);
-						break;
-					} else {
-						count = code + (flagLarge ? 25 : 10);
+					switch (code) {
+						case 0xFE:
+							// Skip this bit.
+							if (!flagLarge) {
+								// TODO: This only applies to later PKLite versions.
+								throw new Error('cmp-pklite: Uncompressed regions are not supported.');
+							}
+							continue;
+
+						case 0xFF:
+							// Finished decompression.
+							debug(`Code decompression complete at offset 0x${input.getPos().toString(16)}`);
+							break readCompressedData; // break out of the switch and the loop
+
+						case 0xFD:
+							if (flagLarge) {
+								// TODO: This only applies to later PKLite versions.
+								throw new Error('cmp-pklite: Uncompressed regions are not supported.');
+							}
+							// else fall through
+
+						default:
+							count = code + (flagLarge ? 25 : 10);
+							break;
 					}
 				}
 
@@ -440,30 +538,126 @@ export default class Compress_PKLite
 		}
 		debug(`Reached end of data at ${input.getPos()}, ${input.distFromEnd()} bytes remaining`);
 
+		// Use a different method for relocation table expansion if the 'extra'
+		// flag is set, and the version is new enough.
+		const relocLarge = (
+			flagExtra
+			&& (verBase >= 0x010C)
+		);
+
 		// Decompress the relocation table.
+		let relocTable = [];
+		let relMSB = -0x0FFF;
 		do {
-			// Values are 16-bit if large flag is on, otherwise 8-bit.
-			let count = input.read(flagLarge ? RecordType.int.u16le : RecordType.int.u8);
+			let count;
+			if (relocLarge) {
+				count = input.read(RecordType.int.u16le);
+				if (count === 0xFFFF) break; // end of list
+				relMSB += 0x0FFF;
+			} else {
+				count = input.read(RecordType.int.u8);
+				if (count === 0x00) break;   // end of list
+				relMSB = input.read(RecordType.int.u16le);
+			}
 			debug(`0x${count.toString(16)} entries in next relocation table block`);
-			if (count === 0xFFFF) break; // end of list
-			if (count === 0x00) break; // end of list
-			const relMSB = 0;//input.read(RecordType.int.u16le) << 16;
 			for (let i = 0; i < count; i++) {
 				const relLSB = input.read(RecordType.int.u16le);
-				const rel = relMSB | relLSB;
-				debug(`Reloc ${j++}, entry ${k++}, remaining ${input.distFromEnd()}: 0x${rel.toString(16)}`);
-				outEXE.write(RecordType.int.u32le, rel);
+				relocTable.push((relMSB << 16) | relLSB);
 			}
 		} while (input.distFromEnd() > 1);
+
 		debug(`Relocation table restoration complete at offset `
 			+ `0x${input.getPos().toString(16)} with ${input.distFromEnd()} `
 			+ `trailing bytes.`);
 
-		if (input.distFromEnd() >= 8) {
-			const pkliteFooter = input.readRecord(recordTypes.pkliteFooter);
-			debug(pkliteFooter);
+		const pkliteFooter = input.readRecord(recordTypes.pkliteFooter);
+
+		// PKLite doesn't use a relocation table but that's the offset where the
+		// original .exe header sits (minus the 'MZ').  However if the 'extra' flag
+		// is set, it's zeroed out, so only use it if it's available.
+		// Decode it so we can use some values from it.
+		let origHeader = {}, origHeaderExtra;
+		if (!flagExtra) {
+			input.seekAbs(offOrigHeader);
+			origHeader = input.readRecord(recordTypes.exeHeader);
+			const lenOriginalHeader = (exeHeader.pgLenHeader << 4) - offOrigHeader;
+			// The original data does from the end of the standard .exe header (which
+			// PKLite has copied in to where we are now) until where the original
+			// relocation table is supposed to start.  We can't just grab until the
+			// end of the PKLite .exe header because PKLite pads it out to the next
+			// paragraph boundary and we don't want to copy those padding bytes.
+			const lenOriginalTail = Math.min(origHeader.offRelocTable - 2, lenOriginalHeader) - 26;
+
+			// And also extract it as a raw block to preserve any extra header data
+			// before the relocation table that we aren't handing in recordTypes.
+			debug(`Length of extra data in original header: 0x${lenOriginalTail.toString(16)}`);
+			if (lenOriginalTail > 0) {
+				origHeaderExtra = input.getU8(offOrigHeader + 26, lenOriginalTail);
+			}
 		} else {
-			debug('Missing PKLite footer');
+			// In extra mode, an extra two byte 'signature' is added, so the .exe can
+			// check to confirm it was decompressed by PKLite.
+			origHeaderExtra = new Uint8Array([
+				pkliteHeader.verMinor,
+				pkliteHeader.verMajor,
+			]);
+		}
+
+		if (recalcHeader) {
+			// Technically we don't need to recalculate these if !flagExtra, but in
+			// case they were tampered with this will restore valid values.  In most
+			// cases this will won't change any header values.
+			origHeader.offRelocTable = 0x1C + origHeaderExtra.length;
+			origHeader.relocCount = relocTable.length;
+			origHeader.pgLenHeader = (origHeader.offRelocTable + origHeader.relocCount * 4 + 0x0F) >> 4;
+			const lenTotal = (origHeader.pgLenHeader << 4) + output.length;
+			origHeader.blockCount = (lenTotal + 0x1FF) >> 9;
+			origHeader.lenLastBlock = lenTotal & 0x1FF;
+
+			origHeader.pgMaxExtra = 0xFFFF;
+			// TODO: This calculation produces the wrong value, due to the decompSize
+			// being incorrect.  The unit tests replace this with the correct value
+			// so if changing this, be sure to remove that from the tests.
+			origHeader.pgMinExtra = (decompSize - output.length + 0xF) >> 4;
+		}
+
+		// We prefer the original header values here rather than the ones PKLite
+		// saved as PKLite doesn't always seem to save the correct ones.  It always
+		// puts the IP register at 0, even when the original .exe had it as 0x100,
+		// which means it runs a bunch of random instructions if the compiler left
+		// space in the .exe for the PSP.
+		if (origHeader.segSS === undefined) {
+			origHeader.segSS = pkliteFooter.segSS;
+			origHeader.regSP = pkliteFooter.regSP;
+			origHeader.segCS = pkliteFooter.segCS;
+			// Other code considers pkliteFooter.regIP the checksum field, but it
+			// matches the regIP value in the header and I can't see why it would be
+			// important to save the checksum over the IP register, so I'm going to
+			// treat it as regIP.
+			origHeader.regIP = pkliteFooter.regIP;
+		}
+		if (origHeader.checksum === undefined) {
+			origHeader.checksum = 0;//pkliteFooter.checksum;
+		}
+
+		// Start writing the output file, beginning with the 'MZ' signature.
+		let outEXE = new RecordBuffer(output.length + origHeader.pgLenHeader + 512);
+		outEXE.writeRecord(recordTypes.exeSig, sig);
+
+		// Write out the header and any extra header data.
+		outEXE.writeRecord(recordTypes.exeHeader, origHeader);
+		if (origHeaderExtra) outEXE.put(origHeaderExtra);
+
+		// Safety check - make sure we're at the expected position.
+		if (outEXE.getPos() !== origHeader.offRelocTable) {
+			throw new Error(`BUG: Relocation table is supposed to be at offset `
+				+ `${origHeader.offRelocTable} but we were going to write it at `
+				+ `offset ${outEXE.getPos()}.`);
+		}
+
+		// Write out the relocation table.
+		for (const r of relocTable) {
+			outEXE.write(RecordType.int.u32le, r);
 		}
 
 		// Pad from the end of the relocation table up to the end of the original
@@ -477,7 +671,10 @@ export default class Compress_PKLite
 				+ `point, at offset 0x${outEXE.getPos().toString(16)}.`);
 		}
 		outEXE.put(new Uint8Array(lenPad));
+
 		outEXE.put(output);
+
+		// TODO: Copy any trailing data that may have been appended to the .exe.
 
 		return outEXE.getU8();
 	}
