@@ -14,6 +14,7 @@ decompress game data, as well as encrypt and decrypt it too.
   * Byte mode (8 flag bits stored upfront in a single byte)
   * Bit mode (each flag bit stored before each literal or length+distance code)
 * cmp-lzw: Generic LZW (Lempel-Ziv-Welch)
+* cmp-pklite: PKLite .exe files (decompression only)
 * cmp-rle-bash: Monster Bash *.DAT run-length-encoding
 * cmp-rle-ccomic: Captain Comic *.EGA run-length-encoding
 * cmp-rlew-id: id Software RLEW encoding used in later games (Keen 4 and later)
