@@ -1,1 +1,3 @@
 node_modules/
+test/cmp-pklite/doofus.*
+test/cmp-pklite/kdreams*
