@@ -48,6 +48,11 @@ const files = {
 	t201:  { ver: '2.01', large: 0, extra: 0 },
 };
 
+const gameFiles = {
+	'doofus.exe': 'VmqvCKBMwuLlArImCd4p/XoaoEk=',
+	'kdreams.exe': 'W18lw4zeVHM0Yapzac62r2HNfr8=',
+};
+
 const md = handler.metadata();
 let testutil = new TestUtil(md.id);
 describe(`Extra tests for ${md.title} [${md.id}]`, function() {
@@ -106,5 +111,53 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 		});
 
 	}); // identify()
+
+});
+
+describe(`Tests with real game files for ${md.title} [${md.id}]`, function() {
+	let content = {};
+
+	before('load test data from local filesystem', function() {
+		for (const filename of Object.keys(gameFiles)) {
+			try {
+				content = {
+					...content,
+					...testutil.loadContent(handler, [filename]),
+				};
+			} catch (e) {
+				console.log(e.message);
+			}
+		}
+	});
+
+	for (const [ filename, targetHash ] of Object.entries(gameFiles)) {
+		describe(`works with ${filename}`, function() {
+
+			it(`reveal()`, function() {
+				// Skip the test if the game file doesn't exist.
+				if (!content[filename]) {
+					this.skip();
+					return;
+				}
+
+				const contentRevealed = handler.reveal(content[filename].main);
+
+				assert.equal(TestUtil.hash(contentRevealed), targetHash,
+					`Content for "${filename}" differs to what was expected.`);
+			});
+
+			it('identify()', function() {
+				// Skip the test if the game file doesn't exist.
+				if (!content[filename]) {
+					this.skip();
+					return;
+				}
+
+				const result = handler.identify(content[filename].main);
+				assert.equal(result.valid, true);
+			});
+
+		}); // describe()
+	}
 
 });

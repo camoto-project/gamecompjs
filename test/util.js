@@ -18,6 +18,7 @@
  */
 
 import assert from 'assert';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -124,6 +125,13 @@ export default class TestUtil {
 
 	static u8FromString(s) {
 		return Uint8Array.from(s.split(''), s => s.charCodeAt(0));
+	}
+
+	static hash(content) {
+		return crypto
+			.createHash('sha1')
+			.update(content)
+			.digest('base64');
 	}
 
 	static almostEqual(a, b, c = 0.001) {
