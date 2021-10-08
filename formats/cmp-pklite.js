@@ -281,11 +281,47 @@ export default class Compress_PKLite
 
 		let input = new RecordBuffer(content);
 
-		if (content.length < 0x1C + 2) {
+		if (content.length < 0x290) {
 			return {
 				valid: false,
 				reason: 'File too short.',
 			};
+		}
+
+		input.seekAbs(0x1E);
+		const sig = input.read(RecordType.string.fixed.noTerm(6));
+		if (sig !== 'PKLITE') {
+			debug('PKLITE copyright message not found, searching for Huffman table');
+
+			// Look for the Huffman table as it's impossible to tweak after compression
+			// without breaking the decompression.
+			const sig = [
+				0x03, 0x04, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x07, 0x08, 0x09, 0x0A,
+				0x0B, 0x0C, 0x0D,
+			];
+			const len = Math.min(0x320, content.length);
+			let match = false;
+
+			for (let i = 0; i < len; i++) {
+				if (content[i] === sig[0]) {
+					match = true;
+					for (let j = 1; j < Math.min(sig.length, len); j++) {
+						if (content[i + j] !== sig[j]) {
+							match = false;
+							break;
+						}
+					}
+					if (match) break;
+				}
+			}
+			if (!match) {
+				// TODO: Could be a compressed file, where the Huffman table is encrypted.
+				return {
+					valid: false,
+					reason: 'Not compressed with PKLite.',
+				};
+			}
 		}
 
 		input.seekAbs(0x1C);
