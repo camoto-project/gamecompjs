@@ -18,6 +18,7 @@
  */
 
 import cmp_lzexe from '../formats/cmp-lzexe.js';
+import cmp_pklite from '../formats/cmp-pklite.js';
 
 /**
  * Decompress the executable, if it is compressed with a supported runtime
@@ -25,11 +26,13 @@ import cmp_lzexe from '../formats/cmp-lzexe.js';
  */
 export function decompress_exe(content)
 {
-	let output = content;
-
 	if (cmp_lzexe.identify(content).valid) {
-		output = cmp_lzexe.reveal(content);
+		return cmp_lzexe.reveal(content);
 	}
 
-	return output;
+	if (cmp_pklite.identify(content).valid) {
+		return cmp_pklite.reveal(content);
+	}
+
+	return content;
 }
