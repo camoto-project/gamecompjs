@@ -9,6 +9,8 @@ decompress game data, as well as encrypt and decrypt it too.
 
 ### Compression
 
+* cmp-bpe-stargunner: Stargunner *.DLT byte-pair encoding
+* cmp-carmackize: id Software Carmackization compression
 * cmp-lzexe: LZEXE .exe files (decompression only, equivalent to UNLZEXE)
 * cmp-lzss: Generic LZSS (Lempel-Ziv-Storer-Szymanski)
   * Byte mode (8 flag bits stored upfront in a single byte)
@@ -19,7 +21,6 @@ decompress game data, as well as encrypt and decrypt it too.
 * cmp-rle-ccomic: Captain Comic *.EGA run-length-encoding
 * cmp-rlew-id: id Software RLEW encoding used in later games (Keen 4 and later)
 * cmp-rle-id: id Software RLE encoding used in early games (Keen 3 and earlier)
-* cmp-carmackize: id Software Carmackization compression
 
 ### Encryption
 
