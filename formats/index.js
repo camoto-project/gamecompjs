@@ -28,6 +28,7 @@ export { default as cmp_rle_id } from './cmp-rle-id.js';
 export { default as cmp_rlew_id } from './cmp-rlew-id.js';
 
 export { default as enc_bpa_drally_filename } from './enc-bpa-drally-filename.js';
+export { default as enc_dlt_stargunner_filename } from './enc-dlt-stargunner-filename.js';
 export { default as enc_glb_raptor } from './enc-glb-raptor.js';
 export { default as enc_xor_blood } from './enc-xor-blood.js';
 export { default as enc_xor_incremental } from './enc-xor-incremental.js';
