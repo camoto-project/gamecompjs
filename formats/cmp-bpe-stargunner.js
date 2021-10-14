@@ -153,7 +153,7 @@ export default class Compress_BPE_Stargunner
 		do {
 			const lenChunk = Math.min(remaining, 4096);
 
-			output.write(RecordType.int.u16le, lenChunk + 4);
+			output.write(RecordType.int.u16le, lenChunk + 5);
 
 			// Empty dictionary (no compression).
 			output.write(RecordType.int.u8, 0xFF);
