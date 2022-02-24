@@ -18,10 +18,14 @@
  */
 
 import assert from 'assert';
-import { BitStream } from 'bit-buffer';
+import {
+	BitStream
+} from 'bit-buffer';
 import TestUtil from './util.js';
 import standardCleartext from './gen-cleartext.js';
-import { cmp_lzw as handler } from '../index.js';
+import {
+	cmp_lzw as handler
+} from '../index.js';
 
 function makeU8(as) {
 	let s = as.join('');
@@ -44,8 +48,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			options: {
 				initialBits: 9,
 				maxBits: 14,
-				cwEOF: -1,    // max codeword
-				cwDictReset: -2,  // max-1
+				cwEOF: -1, // max codeword
+				cwDictReset: -2, // max-1
 				cwFirst: 256,
 				bigEndian: true,
 				flushOnReset: false,
@@ -56,11 +60,25 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			options: {
 				initialBits: 9,
 				maxBits: 12,
-				cwEOF: undefined,//256?
-				cwDictReset: undefined,//256?
+				cwEOF: undefined, //256?
+				cwDictReset: undefined, //256?
 				cwFirst: 257,
 				bigEndian: false,
 				flushOnReset: false,
+			}
+		},
+		gif: {
+			title: 'GIF',
+			options: {
+				initialBits: 9,
+				maxBits: 12,
+				cwEOF: 257,
+				cwDictReset: 256,
+				cwFirst: 258,
+				bigEndian: false,
+				flushOnReset: false,
+				resetDictWhenFull: false,
+				resetCodewordLen: true,
 			}
 		},
 		/*
@@ -95,6 +113,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 			'default.bin',
 			'lionking.bin',
 			'mbash.bin',
+			'gif.bin',
 		]);
 	});
 
@@ -117,10 +136,10 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(6);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9);  // A => 256 [A]
-				bs.writeBits(66, 9);  // B => 257 [AB]
-				bs.writeBits(67, 9);  // C => 258 [BC]
-				bs.writeBits(68, 9);  // D => 259 [CD]
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(67, 9); // C => 258 [BC]
+				bs.writeBits(68, 9); // D => 259 [CD]
 				bs.writeBits(260, 9); // Own codeword
 				const expected = ['A', 'B', 'C', 'D', 'DD'];
 
@@ -132,9 +151,9 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(6);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9);  // A => 256 [A]
-				bs.writeBits(66, 9);  // B => 257 [AB]
-				bs.writeBits(67, 9);  // C => 258 [BC]
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(67, 9); // C => 258 [BC]
 				bs.writeBits(258, 9); // BC => 259 [BC,B]
 				bs.writeBits(260, 9); // Own codeword [BCB] => 260 [BCB,B]
 				const expected = ['A', 'B', 'C', 'BC', 'BCB'];
@@ -147,8 +166,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(6);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9);  // A => 256 [A]
-				bs.writeBits(66, 9);  // B => 257 [AB]
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
 				bs.writeBits(257, 9); // AB => 258 [B,A]
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
@@ -162,8 +181,8 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(7);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9);  // A => 256 [A]
-				bs.writeBits(66, 9);  // B => 257 [AB]
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
 				bs.writeBits(257, 9); // AB => 258 [B,A]
 				bs.writeBits(258, 9); // BA => 259 [AB,B]
 				bs.writeBits(260, 9); // Own codeword [BA,B] => 260 [BA,B]
@@ -178,12 +197,12 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				let input = new ArrayBuffer(7);
 				let bs = new BitStream(input);
 
-				bs.writeBits(65, 9);  // A => 256 [A]
-				bs.writeBits(66, 9);  // B => 257 [AB]
-				bs.writeBits(0, 9);   // 0 => 258 [B,0]
+				bs.writeBits(65, 9); // A => 256 [A]
+				bs.writeBits(66, 9); // B => 257 [AB]
+				bs.writeBits(0, 9); // 0 => 258 [B,0]
 				bs.writeBits(259, 9); // Own codeword [0,0] => 259 [0,0]
 				bs.writeBits(260, 9); // Own codeword [00,0] => 260 [00,0]
-				bs.writeBits(67, 9);  // Trailer to ensure nulls aren't lost
+				bs.writeBits(67, 9); // Trailer to ensure nulls aren't lost
 				const expected = ['A', 'B', '\u0000', '\u0000\u0000', '\u0000\u0000\u0000', 'C'];
 
 				const contentRevealed = handler.reveal(new Uint8Array(input), presets.mbash.options);
@@ -269,6 +288,17 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				TestUtil.buffersEqual(expected, contentObscured);
 			});
 
+			it(`with GIF settings and a codestream ending with code index 0`, function() {
+				let expected = new ArrayBuffer(2);
+				let bs = new BitStream(expected);
+
+				bs.writeBits(0, 9);
+				const input = ['\u0000'];
+
+				const contentObscured = handler.obscure(makeU8(input), presets.gif.options);
+				TestUtil.buffersEqual(expected, contentObscured);
+			});
+
 		});
 	});
 
@@ -289,7 +319,7 @@ describe(`Extra tests for ${md.title} [${md.id}]`, function() {
 				it(`enough data to hit dictionary limit`, function() {
 					let u8input = new Uint8Array(7168);
 					for (let i = 0; i < u8input.length; i++) {
-						u8input[i] = ((i*5) & 0xFF) ^ (i >> 5);
+						u8input[i] = ((i * 5) & 0xFF) ^ (i >> 5);
 					}
 
 					const contentObscured = handler.obscure(u8input, p.options);

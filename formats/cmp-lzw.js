@@ -467,7 +467,7 @@ export default class Compress_LZW
 				idxPending = t;
 			}
 		}
-		if (idxPending) {
+		if (idxPending !== null) {
 			try {
 				bs.writeBits(idxPending, lenCodeword);
 			} catch (e) {
